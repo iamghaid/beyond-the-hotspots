@@ -4,156 +4,149 @@
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const AREA = "Pantanal study area";
-  const SOURCES = {
-    viirs: { label: "VIIRS observed", short: "VIIRS", flag: "high_viirs", note: "Observed Suomi NPP VIIRS active cell-days." },
-    modis: { label: "MODIS raw", short: "MODIS raw", flag: "high_modis_raw", note: "Observed MODIS active cell-days, Terra and Aqua combined. Same color scale as VIIRS, so the gap is visible." },
-    modis_cal: { label: "MODIS harmonized", short: "MODIS harmonized", flag: "high_modis_cal", note: "Estimated active cell-days on the VIIRS scale (combined MODIS × factor)." }
+  const TRANSITION = "2012-02";
+  const SERIES = {
+    modis: { label: "Observed MODIS", short: "MODIS", dec: 0 },
+    snpp: { label: "Observed S-NPP VIIRS", short: "S-NPP", dec: 0 },
+    est: { label: "MODIS estimated on the S-NPP scale", short: "Estimate", dec: 2 }
   };
+  const VIEWS = {
+    default: "Observed MODIS until January 2012, then MODIS estimated on the S-NPP scale.",
+    modis: "Observed MODIS for every month: one consistent measurement across both eras.",
+    snpp: "Observed S-NPP VIIRS. Available from February 2012.",
+    est: "MODIS × 1.84, estimated on the S-NPP scale. Available from February 2012."
+  };
+  const BINS = [50, 200, 500, 2000];
+  const BIN_LABELS = ["<50", "50–199", "200–499", "500–1,999", "2,000+"];
 
-  const state = { src: "viirs", sel: "2017-09-01", from: null, to: null, data: null, byKey: {} };
+  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {} };
   const $ = (id) => document.getElementById(id);
-  const fmt = (v, d = 0) => v == null ? "–" : Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-  const ym = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
-  const label = (k, long) => { const { y, m } = ym(k); return (long ? MONTHS_LONG : MONTHS)[m - 1] + " " + y; };
-  const bin = (v) => v < 50 ? 1 : v < 150 ? 2 : v < 400 ? 3 : v < 1000 ? 4 : 5;
-  const inRange = (k) => k >= state.from && k <= state.to;
-  const rangeRows = () => state.data.months.filter((r) => inRange(r.start));
-
-  function diff(row, value) {
-    if (row.median == null) return null;
-    const d = value - row.median;
-    const pct = row.median > 0 ? Math.round((100 * d) / row.median) : null;
-    return { d, pct };
-  }
-  function refYears(k) { const { y, m } = ym(k); return MONTHS[m - 1] + " " + (y - 5) + "–" + (y - 1); }
+  const fmt = (v, d = 0) => v == null ? "Unavailable" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: d });
+  const split = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
+  const label = (k, long) => { const { y, m } = split(k); return (long ? MONTHS_LONG : MONTHS)[m - 1] + " " + y; };
+  const seasonLabel = (s) => s + "–" + (s + 1);
+  const lastDay = (k) => { const { y, m } = split(k); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+  const bin = (v) => { let i = 0; while (i < BINS.length && v >= BINS[i]) i++; return i + 1; };
+  const inRange = (r) => r.season >= state.from && r.season <= state.to;
+  const rangeRows = () => state.rows.filter(inRange);
+  const valueOf = (r, view) => view === "default" ? r[r.display] : r[view];
+  const viewDec = (r, view) => (view === "est" || (view === "default" && r.display === "est")) ? 2 : 0;
+  const shift = (k, n) => { const { y, m } = split(k); const t = y * 12 + (m - 1) + n; return Math.floor(t / 12) + "-" + String((t % 12) + 1).padStart(2, "0"); };
 
   // ---------- calendar ----------
   function drawCalendar() {
     const cal = $("calendar");
-    const years = [...new Set(state.data.months.map((r) => ym(r.start).y))];
-    const src = SOURCES[state.src];
-    let h = '<div></div>' + MONTHS.map((m) => '<div class="hd" role="columnheader">' + m + '</div>').join("");
+    const years = [...new Set(state.rows.map((r) => split(r.start).y))];
+    let h = '<div class="hd"></div>' + MONTHS.map((m) => '<div class="hd" role="columnheader">' + m + "</div>").join("");
     for (const y of years) {
-      h += '<div class="yr" role="rowheader">' + y + '</div>';
+      h += '<div class="yr" role="rowheader">' + y + "</div>";
       for (let m = 1; m <= 12; m++) {
-        const k = y + "-" + String(m).padStart(2, "0") + "-01";
+        const k = y + "-" + String(m).padStart(2, "0");
         const r = state.byKey[k];
-        if (!r) { h += '<div class="cell na" role="gridcell" aria-label="' + MONTHS_LONG[m - 1] + " " + y + ', no data"></div>'; continue; }
-        const v = r[state.src];
-        const b = bin(v);
-        const flag = r[src.flag] === true;
-        h += '<button class="cell' + (inRange(k) ? "" : " out") + '" role="gridcell" data-k="' + k + '" aria-selected="' + (k === state.sel) + '"' +
-          ' style="background:var(--fire-' + b + ');color:var(--ink-' + b + ')"' +
-          ' aria-label="' + label(k, true) + ", " + fmt(v) + " active cell-days" + (flag ? ", above usual" : "") + '">' +
-          (flag ? '<span class="flag" aria-hidden="true">▲</span>' : "") + '<span class="v">' + fmt(v) + "</span></button>";
+        const era = k === TRANSITION ? " era-start" : "";
+        if (!r) { h += '<div class="cell na" role="gridcell" aria-label="' + MONTHS_LONG[m - 1] + " " + y + ', outside the record"></div>'; continue; }
+        const v = valueOf(r, state.view);
+        const dec = viewDec(r, state.view);
+        const sel = k === state.sel;
+        const common = ' role="gridcell" data-k="' + k + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
+        if (v == null) {
+          h += '<button class="cell unavail' + era + (inRange(r) ? "" : " out") + '"' + common + ' aria-label="' + label(k, true) + ': unavailable"><span class="v">–</span></button>';
+        } else {
+          const b = bin(v);
+          h += '<button class="cell' + era + (inRange(r) ? "" : " out") + '"' + common +
+            ' style="background:var(--fire-' + b + ');color:var(--ink-' + b + ')"' +
+            ' aria-label="' + label(k, true) + ": " + fmt(v, dec) + ' active cell-days"><span class="v">' + compact(v) + "</span></button>";
+        }
       }
     }
     cal.innerHTML = h;
-    $("src-note").textContent = src.note;
+    $("src-note").textContent = VIEWS[state.view];
+    drawLegend();
+    requestAnimationFrame(fitCells);
+  }
+  function compact(v) { return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(Math.round(v)); }
+  function fitCells() {
+    const c = document.querySelector(".cell[data-k]");
+    if (!c) return;
+    const hgt = c.getBoundingClientRect().height;
+    $("calendar").classList.toggle("tiny", hgt < 11);
+    $("calendar").classList.toggle("small", hgt >= 11 && hgt < 16);
+  }
+  function drawLegend() {
+    const sw = BIN_LABELS.map((t, i) => '<span class="key"><i style="background:var(--fire-' + (i + 1) + ')"></i>' + t + "</span>").join("");
+    const eraKey = '<span class="key"><i class="era-key"></i>Feb 2012: S-NPP VIIRS starts</span><span class="key"><i class="hatch"></i>Unavailable</span>';
+    let head = "Active cell-days";
+    if (state.view === "default") head = "2003–Jan 2012 observed MODIS · Feb 2012–2026 estimate on S-NPP scale";
+    $("legend").innerHTML = '<span class="legend-head">' + head + "</span>" + sw + eraKey;
   }
 
   // ---------- month detail ----------
   function drawDetail() {
     const r = state.byKey[state.sel];
-    const src = SOURCES[state.src];
-    const v = r[state.src];
-    const isEst = state.src === "modis_cal";
-    const high = r[src.flag] === true;
-    const dd = diff(r, v);
-    const max = Math.max(r.viirs, r.modis, r.modis_cal, r.median || 0) || 1;
-    const pct = (x) => (100 * x / max).toFixed(1) + "%";
-    const med = r.median != null ? '<span class="med-tick" style="left:' + pct(r.median) + '" title="Median"></span>' : "";
-
-    let cmp;
-    if (dd) {
-      const sign = dd.d >= 0 ? "+" : "−";
-      cmp = '<div class="kv"><small>Median, ' + refYears(state.sel) + ' (VIIRS)</small><b>' + fmt(r.median) + '</b></div>' +
-        '<div class="kv"><small>Difference from median</small><b>' + sign + fmt(Math.abs(dd.d), isEst ? 1 : 0) +
-        (dd.pct != null ? ' <span class="soft">(' + (dd.pct >= 0 ? "+" : "−") + Math.abs(dd.pct) + '%)</span>' : "") + '</b></div>';
-    } else {
-      cmp = '<div class="kv"><small>Same month, five prior years</small><b class="soft">Historical comparison unavailable</b></div>';
-    }
-
+    const k = r.start, { y, m } = split(k);
+    const paired = r.display === "est";
+    const max = Math.max(r.modis || 0, r.snpp || 0, r.est || 0) || 1;
+    const bar = (name, cls, v, d) => '<div class="bar-row"><span>' + name + '</span><div class="bar-track">' +
+      (v == null ? '<span class="bar-na">Unavailable</span>' : '<div class="bar ' + cls + '" style="width:' + (100 * v / max).toFixed(1) + '%"></div>') +
+      '</div><span class="n">' + fmt(v, d) + "</span></div>";
+    const kv = (name, v, d, hint) => '<div class="kv' + (v == null ? " muted" : "") + '"><small>' + name + "</small><b>" + fmt(v, d) + "</b>" + (hint ? "<em>" + hint + "</em>" : "") + "</div>";
     $("detail").innerHTML =
-      '<h2 id="detail-title">' + label(state.sel, true) + ' · ' + AREA + (high ? '<span class="badge">▲ Above usual</span>' : "") + '</h2>' +
+      '<h2 id="detail-title">' + label(k, true) + ' · ' + AREA + "</h2>" +
+      '<p class="note">' + MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
       '<div class="kvs">' +
-      '<div class="kv"><small>' + src.label + (isEst ? " (estimate)" : "") + '</small><b>' + (isEst ? "≈ " : "") + fmt(v, isEst ? 1 : 0) + '</b></div>' +
-      cmp +
-      '</div>' +
-      '<p class="note">Coverage: ' + r.coverage + ' · VIIRS hotspot type: ' + r.viirs_type + '</p>' +
-      (state.src !== "viirs" && dd ? '<p class="note">The median and the above-usual threshold come from VIIRS. Raw MODIS sits on a smaller scale, so comparing it with them shows what goes wrong without harmonization.</p>' : "") +
-      '<div class="compare" aria-label="All three sources for this month">' +
-      bar("VIIRS observed", "viirs", r.viirs, pct, med, 0) +
-      bar("MODIS raw", "modis", r.modis, pct, med, 0) +
-      bar("MODIS harmonized", "cal", r.modis_cal, pct, med, 1) +
-      (r.median != null ? '<p class="note">Grey tick: VIIRS median for this month.</p>' : "") +
-      '</div>';
+      kv("Observed MODIS", r.modis, 0, "Terra + Aqua") +
+      kv("Observed S-NPP VIIRS", r.snpp, 0, paired ? "375 m pixels" : "Before Feb 2012") +
+      kv("MODIS on S-NPP scale", r.est, 2, paired ? "estimate, × 1.84" : "Before Feb 2012") +
+      "</div>" +
+      '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed S-NPP", "snpp", r.snpp, 0) + bar("MODIS on S-NPP scale", "est", r.est, 2) + "</div>" +
+      '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · S-NPP hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
+    if (mapLabel) mapLabel.setTooltipContent(AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view)));
   }
-  function bar(name, cls, v, pct, med, d) {
-    return '<div class="bar-row"><span>' + name + '</span><div class="bar-track"><div class="bar ' + cls + '" style="width:' + pct(v) + '"></div>' + med + '</div><span class="n">' + fmt(v, d) + '</span></div>';
-  }
-  const cap = (s) => s ? s[0].toUpperCase() + s.slice(1) : "–";
 
   // ---------- chart ----------
   function drawChart() {
     const rows = rangeRows();
     const box = $("chart");
-    const W = Math.max(320, box.clientWidth || 800), H = Math.max(160, box.clientHeight || 200);
-    const m = { t: 8, r: 10, b: 22, l: 44 };
+    const W = Math.max(320, box.clientWidth || 800), H = Math.max(140, box.clientHeight || 200);
+    const m = { t: 10, r: 10, b: 22, l: 46 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const max = Math.max(...rows.map((r) => Math.max(r.viirs, r.modis, r.modis_cal))) || 1;
+    const max = Math.max(...rows.map((r) => Math.max(r.modis || 0, r.snpp || 0, r.est || 0))) || 1;
     const nice = niceMax(max);
     const x = (i) => m.l + (rows.length === 1 ? iw / 2 : (i * iw) / (rows.length - 1));
     const y = (v) => m.t + ih - (v / nice) * ih;
-    const path = (key) => rows.map((r, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(r[key]).toFixed(1)).join("");
-    const css = getComputedStyle(document.documentElement);
-    const c = (n) => css.getPropertyValue(n).trim();
-
+    const path = (key) => { let d = "", pen = false; rows.forEach((r, i) => { const v = r[key]; if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; }); return d; };
+    const css = getComputedStyle(document.documentElement), c = (n) => css.getPropertyValue(n).trim();
     let g = "";
     for (let i = 0; i <= 4; i++) {
       const v = (nice * i) / 4;
-      g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke-width="' + (i ? 1 : 1.5) + '"/>';
-      g += '<text x="' + (m.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + fmt(v) + "</text>";
+      g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+      g += '<text x="' + (m.l - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + fmt(v) + "</text>";
     }
     let xt = "";
-    rows.forEach((r, i) => {
-      const { y: yy, m: mm } = ym(r.start);
-      if (mm === 1 || i === 0) xt += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + (mm === 1 ? yy : MONTHS[mm - 1] + " " + yy) + "</text>";
-    });
+    const step = rows.length > 120 ? 3 : 1;
+    rows.forEach((r, i) => { const { y: yy, m: mm } = split(r.start); if (mm === 1 && yy % step === 0) xt += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + yy + "</text>"; });
+    const ti = rows.findIndex((r) => r.start === TRANSITION);
+    const trans = ti >= 0 ? '<line x1="' + x(ti) + '" x2="' + x(ti) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text-2") + '" stroke-width="1.5"/><text class="t-label" x="' + (x(ti) + 5) + '" y="' + (m.t + 12) + '">S-NPP starts</text>' : "";
     const si = rows.findIndex((r) => r.start === state.sel);
     const selLine = si >= 0 ? '<line x1="' + x(si) + '" x2="' + x(si) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text") + '" stroke-width="1.5" stroke-dasharray="2 3"/>' : "";
-    const medDots = rows.map((r, i) => r.median != null ? '<rect x="' + (x(i) - 4) + '" y="' + (y(r.median) - 1.5) + '" width="8" height="3" rx="1" fill="' + c("--median") + '"/>' : "").join("");
-
-    box.innerHTML =
-      '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Line chart of monthly active cell-days for VIIRS, raw MODIS and harmonized MODIS">' +
-      '<g class="grid axis">' + g + xt + "</g>" + selLine +
-      '<path d="' + path("modis") + '" fill="none" stroke="' + c("--modis") + '" stroke-opacity=".55" stroke-width="1.5"/>' +
-      '<path d="' + path("viirs") + '" fill="none" stroke="' + c("--viirs") + '" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="' + path("modis_cal") + '" fill="none" stroke="' + c("--modis") + '" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round"/>' +
-      medDots +
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed S-NPP VIIRS and the S-NPP-scale estimate, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
+      '<g class="grid axis">' + g + xt + "</g>" + trans + selLine +
+      '<path d="' + path("modis") + '" fill="none" stroke="' + c("--modis") + '" stroke-width="1.5"/>' +
+      '<path d="' + path("snpp") + '" fill="none" stroke="' + c("--viirs") + '" stroke-width="2" stroke-linejoin="round"/>' +
+      '<path d="' + path("est") + '" fill="none" stroke="' + c("--est") + '" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round"/>' +
       '<line id="hover-line" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--median") + '" visibility="hidden"/>' +
-      '<rect id="hit" x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="transparent" style="cursor:pointer"/>' +
-      "</svg>";
-
+      '<rect id="hit" x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="transparent" style="cursor:pointer"/></svg>';
     const svg = box.querySelector("svg"), hit = $("hit"), hl = $("hover-line"), tip = $("tip");
-    const idxAt = (ev) => {
-      const pt = svg.getBoundingClientRect();
-      const px = ((ev.clientX - pt.left) / pt.width) * W;
-      return Math.max(0, Math.min(rows.length - 1, Math.round(((px - m.l) / iw) * (rows.length - 1))));
-    };
+    const idxAt = (ev) => { const pt = svg.getBoundingClientRect(); const px = ((ev.clientX - pt.left) / pt.width) * W; return Math.max(0, Math.min(rows.length - 1, Math.round(((px - m.l) / iw) * (rows.length - 1)))); };
     hit.addEventListener("pointermove", (ev) => {
       const i = idxAt(ev), r = rows[i];
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       tip.hidden = false;
-      tip.innerHTML = "<b>" + label(r.start, true) + "</b>" +
-        "<span><em>VIIRS observed</em>" + fmt(r.viirs) + "</span>" +
-        "<span><em>MODIS raw</em>" + fmt(r.modis) + "</span>" +
-        "<span><em>MODIS harmonized</em>" + fmt(r.modis_cal, 1) + "</span>" +
-        (r.median != null ? "<span><em>VIIRS median</em>" + fmt(r.median) + "</span>" : "");
+      tip.innerHTML = "<b>" + label(r.start, true) + " · " + AREA + "</b>" +
+        "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed S-NPP</em>" + fmt(r.snpp) + "</span><span><em>MODIS on S-NPP scale</em>" + fmt(r.est, 2) + "</span>";
       const bx = box.getBoundingClientRect(), sx = (x(i) / W) * bx.width;
-      const left = sx + 14 + 200 > bx.width ? sx - 214 : sx + 14;
-      tip.style.left = left + "px";
-      tip.style.top = (box.offsetTop + 10) + "px";
+      tip.style.left = (sx + 230 > bx.width ? sx - 236 : sx + 14) + "px";
+      tip.style.top = (box.offsetTop + 8) + "px";
     });
     hit.addEventListener("pointerleave", () => { hl.setAttribute("visibility", "hidden"); tip.hidden = true; });
     hit.addEventListener("click", (ev) => select(rows[idxAt(ev)].start));
@@ -161,108 +154,102 @@
   function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const s of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (s * p >= v) return s * p; return 10 * p; }
 
   function drawTable() {
-    const rows = rangeRows();
-    $("table").innerHTML = "<thead><tr><th>Month</th><th>VIIRS</th><th>MODIS raw</th><th>MODIS harmonized</th><th>VIIRS median</th><th>Difference</th></tr></thead><tbody>" +
-      rows.map((r) => { const d = diff(r, r.viirs); return "<tr><td>" + label(r.start) + "</td><td>" + fmt(r.viirs) + "</td><td>" + fmt(r.modis) + "</td><td>" + fmt(r.modis_cal, 2) + "</td><td>" + fmt(r.median) + "</td><td>" + (d ? (d.d >= 0 ? "+" : "−") + fmt(Math.abs(d.d)) + (d.pct != null ? " (" + d.pct + "%)" : "") : "–") + "</td></tr>"; }).join("") + "</tbody>";
+    $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed S-NPP</th><th>MODIS on S-NPP scale</th></tr></thead><tbody>" +
+      rangeRows().map((r) => "<tr><td>" + label(r.start) + "</td><td>" + seasonLabel(r.season) + "</td><td>" + fmt(r.modis) + "</td><td>" + fmt(r.snpp) + "</td><td>" + fmt(r.est, 2) + "</td></tr>").join("") + "</tbody>";
   }
 
-  // ---------- agreement ----------
+  // ---------- 2017–2018 methods example ----------
   function drawAgreement() {
-    const rows = state.data.months.filter((r) => r.eligible === true);
+    const rows = state.rows.filter((r) => r.flags);
     const methods = [
-      { key: "high_viirs", name: "VIIRS", sub: "reference", short: "VIIRS" },
-      { key: "high_modis_raw", name: "MODIS raw", sub: "VIIRS threshold", short: "raw" },
-      { key: "high_modis_own", name: "MODIS raw", sub: "own threshold", short: "own threshold" },
-      { key: "high_modis_cal", name: "Harmonized", sub: "VIIRS threshold", short: "harmonized" }
+      { i: 0, name: "S-NPP VIIRS", sub: "reference", short: "S-NPP" },
+      { i: 1, name: "MODIS raw", sub: "S-NPP threshold", short: "raw" },
+      { i: 2, name: "MODIS raw", sub: "own threshold", short: "own threshold" },
+      { i: 3, name: "MODIS estimate", sub: "S-NPP threshold", short: "estimate" }
     ];
-    const el = $("agreement");
-    el.style.gridTemplateColumns = "";
-    let h = "<div></div>" + rows.map((r) => { const { y, m } = ym(r.start); return '<div class="hd">' + MONTHS[m - 1] + (m === 1 ? " '" + String(y).slice(2) : "") + "</div>"; }).join("");
+    let h = "<div></div>" + rows.map((r) => { const { y, m } = split(r.start); return '<div class="hd">' + MONTHS[m - 1] + (m === 1 ? " '" + String(y).slice(2) : "") + "</div>"; }).join("");
     for (const md of methods) {
       h += '<div class="lbl">' + md.name + "<small>" + md.sub + "</small></div>";
       let off = 0, caught = 0, ref = 0;
       for (const r of rows) {
-        const a = r.high_viirs === true, b = r[md.key] === true;
+        const a = r.flags[0], b = r.flags[md.i];
         let cls = "ag", txt = "", lab = "Usual, agrees";
-        if (md.key === "high_viirs") { if (a) { cls += " hit"; txt = "▲"; lab = "Above usual"; } }
-        else if (a && b) { cls += " hit"; txt = "▲"; lab = "Caught the high month"; caught++; }
-        else if (a && !b) { cls += " miss"; txt = "✕"; lab = "Missed the high month"; off++; }
-        else if (!a && b) { cls += " extra"; txt = "+"; lab = "Extra high call"; off++; }
+        if (md.i === 0) { if (a) { cls += " hit"; txt = "▲"; lab = "Above usual"; } }
+        else if (a && b) { cls += " hit"; txt = "▲"; lab = "Caught"; caught++; }
+        else if (a) { cls += " miss"; txt = "✕"; lab = "Missed"; off++; }
+        else if (b) { cls += " extra"; txt = "+"; lab = "Extra high call"; off++; }
         if (a) ref++;
-        h += '<div class="' + cls + '" title="' + label(r.start) + ": " + lab + '" aria-label="' + label(r.start) + ": " + lab + '">' + txt + "</div>";
+        h += '<div class="' + cls + '" title="' + label(r.start) + ": " + lab + '" aria-label="' + label(r.start) + ", " + md.name + " " + md.sub + ": " + lab + '">' + txt + "</div>";
       }
-      el.dataset.ref = ref;
-      h += "";
-      md.summary = md.key === "high_viirs" ? null : { off, caught, ref, n: rows.length };
+      md.sum = md.i ? { off, caught, ref, n: rows.length } : null;
     }
-    el.innerHTML = h;
-    const ms = methods.filter((m) => m.summary);
-    const sums = "<b>Months that disagree with VIIRS:</b> " + ms.map((m) => m.short + " " + m.summary.off + "/" + m.summary.n).join(" · ") +
-      "<br><b>VIIRS-high month caught:</b> " + ms.map((m) => m.short + " " + m.summary.caught + "/" + m.summary.ref).join(" · ");
-    el.insertAdjacentHTML("afterend", "");
-    let s = document.getElementById("ag-summary");
-    if (!s) { s = document.createElement("div"); s.id = "ag-summary"; el.after(s); }
-    s.innerHTML =
-      '<div class="ag-key"><span><i style="background:var(--alert)"></i>Caught</span><span><i style="box-shadow:inset 0 0 0 2px var(--alert)"></i>Missed</span><span><i style="background:repeating-linear-gradient(45deg,var(--median) 0 3px,transparent 3px 7px)"></i>Extra high call</span><span><i style="background:var(--raised)"></i>Usual, agrees</span></div>' +
-      '<p class="ag-sum-line">' + sums + " <span>(one high month: a first result, not proof)</span></p>";
+    $("agreement").innerHTML = h;
+    const ms = methods.filter((x) => x.sum);
+    $("ag-summary").innerHTML =
+      '<div class="ag-key"><span><i style="background:var(--alert)"></i>Caught</span><span><i style="box-shadow:inset 0 0 0 2px var(--alert)"></i>Missed</span><span><i style="background:repeating-linear-gradient(45deg,var(--median) 0 3px,transparent 3px 7px)"></i>Extra high call</span></div>' +
+      '<p class="ag-sum-line"><b>Months that disagree with S-NPP:</b> ' + ms.map((x) => x.short + " " + x.sum.off + "/" + x.sum.n).join(" · ") +
+      "<br><b>S-NPP-high month caught:</b> " + ms.map((x) => x.short + " " + x.sum.caught + "/" + x.sum.ref).join(" · ") + " (one high month: a first result, not proof)</p>";
   }
 
   // ---------- map ----------
-  let map;
-  function setMapTheme() {}
+  let map, mapLabel;
   function drawMap() {
     if (!window.L) { $("map").textContent = "Map unavailable offline."; return; }
     const b = [[-19.5, -58], [-17, -56]];
     map = L.map("map", { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false, attributionControl: true });
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 12, attribution: "Map © Esri, HERE, Garmin, OpenStreetMap" }).addTo(map);
-    L.rectangle(b, { color: "#C93636", weight: 3, fillColor: "#F38C48", fillOpacity: 0.22 }).addTo(map)
-      .bindTooltip("Pantanal study area", { permanent: true, direction: "top", className: "area-label", offset: [0, -4] });
-    const fit = () => { map.invalidateSize(); map.fitBounds(b, { padding: [36, 36], maxZoom: 8 }); };
+    mapLabel = L.rectangle(b, { color: "#C93636", weight: 3, fillColor: "#F38C48", fillOpacity: 0.22 }).addTo(map)
+      .bindTooltip(AREA, { permanent: true, direction: "top", className: "area-label", offset: [0, -4] });
+    const fit = () => { map.invalidateSize(); map.fitBounds(b, { padding: [40, 40], maxZoom: 8 }); };
     fit(); setTimeout(fit, 250);
     if (window.ResizeObserver) new ResizeObserver(fit).observe($("map"));
   }
 
   // ---------- range + export ----------
   function setupRange() {
-    const opts = state.data.months.map((r) => '<option value="' + r.start + '">' + label(r.start) + "</option>").join("");
+    const seasons = [...new Set(state.rows.map((r) => r.season))];
+    const opts = seasons.map((s) => '<option value="' + s + '">' + seasonLabel(s) + "</option>").join("");
     $("from").innerHTML = opts; $("to").innerHTML = opts;
     $("from").value = state.from; $("to").value = state.to;
     const onChange = () => {
-      let f = $("from").value, t = $("to").value;
+      let f = +$("from").value, t = +$("to").value;
       if (f > t) [f, t] = [t, f];
-      state.from = f; state.to = t;
-      $("from").value = f; $("to").value = t;
+      state.from = f; state.to = t; $("from").value = f; $("to").value = t;
       renderRange();
     };
-    $("from").addEventListener("change", onChange);
-    $("to").addEventListener("change", onChange);
+    $("from").addEventListener("change", onChange); $("to").addEventListener("change", onChange);
   }
   function renderRange() {
-    $("dl-range").textContent = label(state.from) + " – " + label(state.to) + " (" + rangeRows().length + " months)";
+    $("dl-range").textContent = "seasons " + seasonLabel(state.from) + " to " + seasonLabel(state.to) + " (" + rangeRows().length + " months), with all three series, season, coverage and source";
     drawCalendar(); drawChart(); drawTable();
   }
   function download() {
-    const cols = ["month_start", "month_end", "study_area", "viirs_observed_cell_days", "modis_raw_cell_days", "modis_harmonized_cell_days_estimate", "viirs_median_cell_days", "reference_years", "difference_from_median", "pct_difference_from_median", "viirs_above_usual", "coverage_status", "viirs_type_status", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
-    const meta = state.data.meta;
+    const meta = state.meta;
+    const cols = ["month_id", "period_start_local", "period_end_local", "season", "study_area", "observed_modis_cell_days", "aqua_cell_days", "terra_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "calendar_view_value", "calendar_view_series", "coverage_status", "viirs_type_status", "modis_versions", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
     const lines = [cols.join(",")];
     for (const r of rangeRows()) {
-      const d = diff(r, r.viirs);
-      const vals = [r.start, r.end, AREA, r.viirs, r.modis, r.modis_cal, r.median ?? "", r.ref_years ?? "", d ? d.d : "", d && d.pct != null ? d.pct : "", r.high_viirs == null ? "" : r.high_viirs, r.coverage, r.viirs_type, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS (MODIS v" + meta.modis_version + ", VIIRS Suomi NPP v" + meta.viirs_version + ")"];
+      const paired = r.display === "est";
+      const vals = [r.start, r.start + "-01", r.start + "-" + lastDay(r.start), seasonLabel(r.season), AREA, r.modis, r.aqua, r.terra, r.snpp ?? "", r.est ?? "", r[r.display],
+        paired ? "MODIS estimated on the S-NPP scale" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
+        meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"];
       lines.push(vals.map((v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(","));
     }
-    const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "pantanal_activity_" + state.from.slice(0, 7) + "_to_" + state.to.slice(0, 7) + ".csv";
+    a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" }));
+    a.download = "pantanal_activity_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   // ---------- interactions ----------
-  function select(k) { state.sel = k; drawCalendar(); drawDetail(); drawChart(); }
-  function setSource(s) {
-    state.src = s;
-    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.src === s)));
+  function select(k, focus) {
+    if (!state.byKey[k]) return;
+    state.sel = k; drawCalendar(); drawDetail(); drawChart();
+    if (focus) document.querySelector('.cell[data-k="' + k + '"]')?.focus();
+  }
+  function setView(v) {
+    state.view = v;
+    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.src === v)));
     drawCalendar(); drawDetail();
   }
   function setupTheme() {
@@ -273,33 +260,51 @@
       const t = isDark() ? "light" : "dark";
       document.documentElement.dataset.theme = t;
       try { localStorage.setItem("theme", t); } catch (e) {}
-      sync(); drawChart(); setMapTheme();
+      sync(); drawChart();
     });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); setMapTheme(); });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); });
     sync();
   }
 
   async function init() {
-    const res = await fetch("monthly.json");
-    const raw = await res.json();
-    state.data = raw.rows ? { meta: raw.meta, months: raw.rows.map((r) => Object.fromEntries(raw.keys.map((k, i) => [k, r[i]]))) } : raw;
-    state.data.months.forEach((r) => { state.byKey[r.start] = r; });
-    const ms = state.data.months;
-    state.from = ms[0].start; state.to = ms[ms.length - 1].start;
-    $("span-label").textContent = label(state.from, true) + " – " + label(state.to, true);
-    $("factor").textContent = state.data.meta.modis_to_snpp_factor;
+    let raw;
+    try {
+      const res = await fetch("monthly.json");
+      if (!res.ok) throw new Error(res.status);
+      raw = await res.json();
+    } catch (e) {
+      document.querySelector(".dash").innerHTML = '<p class="card load-error">The activity data didn\'t load. Refresh the page or check your connection.</p>';
+      throw e;
+    }
+    state.meta = raw.meta;
+    state.rows = raw.rows.map((r) => {
+      const o = Object.fromEntries(raw.keys.map((k, i) => [k, r[i]]));
+      o.display = o.start >= TRANSITION ? "est" : "modis";
+      return o;
+    });
+    state.rows.forEach((r) => { state.byKey[r.start] = r; });
+    const seasons = state.rows.map((r) => r.season);
+    state.from = Math.min(...seasons); state.to = Math.max(...seasons);
+    const first = state.rows[0].start, last = state.rows[state.rows.length - 1].start;
+    $("span-label").textContent = label(first, true) + " – " + label(last, true);
 
-    $("calendar").addEventListener("click", (e) => { const b = e.target.closest("button.cell"); if (b) select(b.dataset.k); });
-    document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setSource(b.dataset.src)));
+    const cal = $("calendar");
+    cal.addEventListener("click", (e) => { const b = e.target.closest("button.cell"); if (b) select(b.dataset.k, true); });
+    cal.addEventListener("keydown", (e) => {
+      const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -12, ArrowDown: 12, Home: -999, End: 999 };
+      if (!(e.key in moves)) return;
+      e.preventDefault();
+      let k = shift(state.sel, moves[e.key]);
+      if (!state.byKey[k]) k = moves[e.key] < 0 ? first : last;
+      select(k, true);
+    });
+    document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
     $("download").addEventListener("click", download);
-    let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
-    if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(drawChart, 80); }).observe($("chart"));
+    let rt;
+    addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); fitCells(); }, 120); });
+    if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); fitCells(); }, 80); }).observe($("chart"));
 
-    setupTheme(); setupRange(); renderRange(); drawDetail(); drawAgreement(); drawMap();
-    if (innerWidth < 760) { document.querySelector(".cal-scroll").scrollLeft = 9999; $("agreement").scrollLeft = 9999; }
+    setupTheme(); drawMap(); setupRange(); renderRange(); drawDetail(); drawAgreement();
   }
-  init().catch((err) => {
-    document.querySelector("main").insertAdjacentHTML("afterbegin", '<p class="card">The data file did not load. Refresh the page or check that monthly.json is deployed.</p>');
-    console.error(err);
-  });
+  init().catch((err) => console.error(err));
 })();
