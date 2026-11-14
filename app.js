@@ -8,19 +8,19 @@
   const SERIES = {
     modis: { label: "Observed MODIS (Terra + Aqua)", short: "MODIS", dec: 0 },
     snpp: { label: "Observed VIIRS (S-NPP)", short: "VIIRS", dec: 0 },
-    est: { label: "MODIS estimated on the VIIRS scale", short: "Estimate", dec: 2 }
+    est: { label: "Harmonized MODIS (× 1.84, VIIRS scale)", short: "Harmonized MODIS", dec: 2 }
   };
   const VIEWS = {
-    default: "Observed MODIS until January 2012, then MODIS estimated on the VIIRS scale.",
+    default: "Observed MODIS until January 2012, then harmonized MODIS (× 1.84, on the VIIRS scale).",
     modis: "Observed MODIS for every month: one consistent measurement across both eras.",
     snpp: "Observed VIIRS (S-NPP). Available from February 2012.",
-    est: "MODIS × 1.84, estimated on the VIIRS scale. Available from February 2012."
+    est: "Harmonized MODIS: MODIS × 1.84, on the VIIRS scale. Available from February 2012."
   };
   const WEEK_VIEWS = {
-    default: "Weeks run Monday to Sunday, cut at the February season start. Shown: MODIS estimated on the VIIRS scale.",
+    default: "Weeks run Monday to Sunday, cut at the February season start. Shown: harmonized MODIS.",
     modis: "Observed MODIS for each week, from February 2012.",
     snpp: "Observed VIIRS (S-NPP) for each week, from February 2012.",
-    est: "MODIS × 1.84 for each full week. Partial weeks and weeks with no MODIS activity have no estimate."
+    est: "Harmonized MODIS (MODIS × 1.84) for each full week. Partial weeks and weeks with no MODIS activity are not harmonized."
   };
   const SCALE_MAX = 8000;
   const RAMPS = {
@@ -131,7 +131,7 @@
     const ticks = [0, 10, 100, 1000, SCALE_MAX];
     const pos = (v) => (100 * Math.log10(1 + v) / Math.log10(1 + SCALE_MAX)).toFixed(1) + "%";
     const grad = Array.from({ length: 11 }, (_, i) => colorFor(Math.pow(1 + SCALE_MAX, i / 10) - 1).bg).join(",");
-    const head = state.grain === "week" ? "Weekly active cell-days" : state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the VIIRS scale" : "Active cell-days";
+    const head = state.grain === "week" ? "Weekly active cell-days" : state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: harmonized MODIS" : "Active cell-days";
     $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="ramp" style="background:linear-gradient(90deg,' + grad + ')"></div><div class="ticks">' +
       ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span>' + (state.grain === "week" ? '<span class="key"><b class="chip-key">5 days</b>partial week at the season start</span>' : '<span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>');
   }
@@ -148,16 +148,16 @@
       (v == null ? '<span class="bar-na">Unavailable</span>' : '<div class="bar ' + cls + '" style="width:' + (100 * v / max).toFixed(1) + '%"></div>') +
       '</div><span class="n">' + fmt(v, d) + "</span></div>";
     const kv = (name, v, d, hint) => '<div class="kv' + (v == null ? " muted" : "") + '"><small>' + name + "</small><b>" + fmt(v, d) + "</b>" + (hint ? "<em>" + hint + "</em>" : "") + "</div>";
-    const estHint = wk ? (wk.partial ? "no estimate for a " + wk.days + "-day week" : r.est == null ? "no estimate: no MODIS activity" : "estimate, × 1.84") : (paired ? "estimate, × 1.84" : "Before Feb 2012");
+    const estHint = wk ? (wk.partial ? "not harmonized: " + wk.days + "-day week" : r.est == null ? "not harmonized: no MODIS activity" : "MODIS × 1.84") : (paired ? "MODIS × 1.84" : "Before Feb 2012");
     $("detail").innerHTML =
       '<h2 id="detail-title">' + (wk ? shortSpan(wk) + ", " + split(wk.end).y : label(k, true)) + ' · ' + AREA + "</h2>" +
       '<p class="note">' + (wk ? "Week of " + spanLabel(wk) : MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y) + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
       '<div class="kvs">' +
       kv("Observed MODIS", r.modis, 0, "Terra + Aqua") +
       kv("Observed VIIRS", r.snpp, 0, paired ? "S-NPP · 375 m pixels" : "Before Feb 2012") +
-      kv("MODIS on VIIRS scale", r.est, 2, estHint) +
+      kv("Harmonized MODIS", r.est, 2, estHint) +
       "</div>" +
-      '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed VIIRS", "snpp", r.snpp, 0) + bar("MODIS on VIIRS scale", "est", r.est, 2) + "</div>" +
+      '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed VIIRS", "snpp", r.snpp, 0) + bar("Harmonized MODIS", "est", r.est, 2) + "</div>" +
       '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · VIIRS hotspot type provisional" : "") + (r.versions ? " · MODIS v" + r.versions.replace("|", " and v") : "") + "</p>";
     const mapText = wk ? AREA + " · " + shortSpan(wk) + ", " + split(wk.end).y + ": " + fmt(weekValue(wk, state.view), state.view === "est" || state.view === "default" ? 2 : 0) : AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
     lastMapText = mapText;
@@ -252,7 +252,7 @@
       const si = rows.findIndex((r) => r.start === state.sel);
       selLine = si >= 0 ? '<line x1="' + x(si) + '" x2="' + x(si) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text") + '" stroke-width="1.5" stroke-dasharray="2 3"/>' : "";
     }
-    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed VIIRS (S-NPP) and the VIIRS-scale estimate, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed VIIRS (S-NPP) and harmonized MODIS, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
       '<g class="grid axis">' + g + xt + "</g>" + trans + selLine +
       '<path d="' + path("modis") + '" fill="none" stroke="' + c("--modis") + '" stroke-width="1.5"/>' +
       '<path d="' + path("snpp") + '" fill="none" stroke="' + c("--viirs") + '" stroke-width="2" stroke-linejoin="round"/>' +
@@ -266,7 +266,7 @@
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       tip.hidden = false;
       tip.innerHTML = "<b>" + (weekly ? spanLabel(r) : label(r.start, true)) + " · " + AREA + "</b>" +
-        "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed VIIRS (S-NPP)</em>" + fmt(r.snpp) + "</span><span><em>MODIS on VIIRS scale</em>" + fmt(r.est, 2) + "</span>";
+        "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed VIIRS (S-NPP)</em>" + fmt(r.snpp) + "</span><span><em>Harmonized MODIS</em>" + fmt(r.est, 2) + "</span>";
       const bw = box.clientWidth, sx = (x(i) / W) * bw;
       tip.style.left = (sx + 230 > bw ? sx - 236 : sx + 14) + "px";
       tip.style.top = (box.offsetTop + 8) + "px";
@@ -278,11 +278,11 @@
 
   function drawTable() {
     if (state.grain === "week") {
-      $("table").innerHTML = "<thead><tr><th>Week</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>MODIS on VIIRS scale</th></tr></thead><tbody>" +
+      $("table").innerHTML = "<thead><tr><th>Week</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>Harmonized MODIS</th></tr></thead><tbody>" +
         weekRows().map((w) => "<tr><td>" + spanLabel(w) + "</td><td>" + seasonLabel(w.season) + "</td><td>" + fmt(w.modis) + "</td><td>" + fmt(w.snpp) + "</td><td>" + fmt(w.est, 2) + "</td></tr>").join("") + "</tbody>";
       return;
     }
-    $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>MODIS on VIIRS scale</th></tr></thead><tbody>" +
+    $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>Harmonized MODIS</th></tr></thead><tbody>" +
       rangeRows().map((r) => "<tr><td>" + label(r.start) + "</td><td>" + seasonLabel(r.season) + "</td><td>" + fmt(r.modis) + "</td><td>" + fmt(r.snpp) + "</td><td>" + fmt(r.est, 2) + "</td></tr>").join("") + "</tbody>";
   }
 
@@ -293,7 +293,7 @@
       { i: 0, name: "VIIRS (S-NPP)", sub: "reference", short: "VIIRS" },
       { i: 1, name: "MODIS raw", sub: "VIIRS threshold", short: "raw" },
       { i: 2, name: "MODIS raw", sub: "own threshold", short: "own threshold" },
-      { i: 3, name: "MODIS estimate", sub: "VIIRS threshold", short: "estimate" }
+      { i: 3, name: "Harmonized MODIS", sub: "VIIRS threshold", short: "harmonized" }
     ];
     let h = "<div></div>" + rows.map((r) => { const { y, m } = split(r.start); return '<div class="hd">' + MONTHS[m - 1] + (m === 1 ? " '" + String(y).slice(2) : "") + "</div>"; }).join("");
     for (const md of methods) {
@@ -417,7 +417,7 @@
     for (const r of rangeRows()) {
       const paired = r.display === "est";
       const vals = [r.start, r.start + "-01", r.start + "-" + lastDay(r.start), seasonLabel(r.season), AREA, r.modis, r.aqua, r.terra, r.snpp ?? "", r.est ?? "", r[r.display],
-        paired ? "MODIS estimated on the VIIRS scale" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
+        paired ? "Harmonized MODIS (VIIRS scale)" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
         meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"];
       lines.push(vals.map((v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(","));
     }

@@ -2,7 +2,7 @@
 
 Pantanal burning activity calendar.
 
-A web calendar of monthly satellite burning activity for a Pantanal study area (58°W–56°W, 19.5°S–17°S), February 2003 – January 2026: 108 MODIS-only months and 168 months with observed MODIS, observed VIIRS (S-NPP) and MODIS estimated on the VIIRS scale.
+A web calendar of monthly satellite burning activity for a Pantanal study area (58°W–56°W, 19.5°S–17°S), February 2003 – January 2026: 108 MODIS-only months and 168 months with observed MODIS, observed VIIRS (S-NPP) and harmonized MODIS on the VIIRS scale.
 
 It answers one question: **after harmonization, do MODIS records tell the same story as Suomi NPP VIIRS?** Across 120 months held out from fitting, MODIS × 1.84 cut weighted absolute error against observed VIIRS (S-NPP) from 44.48% to 11.51%.
 
@@ -12,7 +12,7 @@ NASA Space Apps Challenge 2026 · The Kernel team.
 
 - **Calendar:** years by month, colored by active cell-days, with a source switch.
 - **Month detail:** observed value, median of the same month in the five prior years, difference, coverage.
-- **Three sources over time:** VIIRS, raw MODIS and harmonized MODIS (estimate), with a date range and a table view.
+- **Three sources over time:** VIIRS, raw MODIS and harmonized MODIS, with a date range and a table view.
 - **2017 test year:** which months each method calls above usual, compared with VIIRS.
 - **Map** of the study area and **CSV download** of the selected months.
 

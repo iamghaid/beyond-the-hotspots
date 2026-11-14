@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Beyond the Hotspots · Pantanal burning activity calendar</title>
-<meta name="description" content="Monthly satellite burning activity for a Pantanal study area, February 2003 – January 2026: observed MODIS, observed VIIRS (S-NPP), and MODIS estimated on the VIIRS scale.">
+<meta name="description" content="Monthly satellite burning activity for a Pantanal study area, February 2003 – January 2026: observed MODIS, observed VIIRS (S-NPP), and harmonized MODIS on the VIIRS scale.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,7 +65,7 @@
         <button role="radio" aria-checked="true" data-src="default">Calendar view</button>
         <button role="radio" aria-checked="false" data-src="modis" title="Observed MODIS (Terra + Aqua)">MODIS</button>
         <button role="radio" aria-checked="false" data-src="snpp" title="Observed VIIRS (S-NPP)">VIIRS</button>
-        <button role="radio" aria-checked="false" data-src="est" title="MODIS estimated on the VIIRS scale">Estimate</button>
+        <button role="radio" aria-checked="false" data-src="est" title="Harmonized MODIS: MODIS × 1.84, on the VIIRS scale">Harmonized MODIS</button>
       </div>
     </div>
     <p class="note" id="src-note"></p>
@@ -92,7 +92,7 @@
     <div class="series-key" aria-hidden="true">
       <span><i class="ln modis"></i>Observed MODIS (Terra + Aqua)</span>
       <span><i class="ln snpp"></i>Observed VIIRS (S-NPP)</span>
-      <span><i class="ln est"></i>MODIS estimated on the VIIRS scale</span>
+      <span><i class="ln est"></i>Harmonized MODIS (× 1.84, VIIRS scale)</span>
     </div>
     <div id="chart" class="chart"></div>
     <div id="tip" class="tip" role="status" hidden></div>
@@ -109,7 +109,7 @@
     <details class="pop">
       <summary>Methods and results</summary>
       <div class="pop-body">
-        <h3>How the estimate works</h3>
+        <h3>How harmonized MODIS works</h3>
         <p>Combined Terra and Aqua MODIS activity × <b>1.84</b>, fitted against observed VIIRS (S-NPP) on full weeks from 2013–2014 to 2016–2017.</p>
         <ul class="facts">
           <li><b>120 held-out months, 10 seasons:</b> weighted absolute error 44.48% → 11.51%.</li>
@@ -129,7 +129,7 @@
         <ul class="facts">
           <li><b>Active cell-day:</b> a 2 × 2 km equal-area cell with one or more qualifying detections on one local day. It counts detected burning activity, not individual fires, burned area or risk.</li>
           <li><b>Qualifying detections:</b> inferred vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS nominal or high confidence. Local dates in America/Cuiaba.</li>
-          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed VIIRS (S-NPP) and the VIIRS-scale estimate.</li>
+          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed VIIRS (S-NPP) and harmonized MODIS (× 1.84, VIIRS scale).</li>
           <li><b>Status:</b> satellite coverage unverified throughout. VIIRS hotspot typing is provisional. MODIS versions 6.03 and 61.03.</li>
           <li><b>Download:</b> <span id="dl-range"></span>.</li>
         </ul>
