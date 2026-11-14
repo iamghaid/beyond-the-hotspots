@@ -25,7 +25,7 @@
   const SCALE_MAX = 8000;
   const RAMPS = {
     light: ["#FBEBD3", "#F7C98C", "#EE9446", "#CF5A23", "#8F2A14"],
-    dark: ["#4A3426", "#8A4A26", "#C8692C", "#F0A050", "#FFE0A6"]
+    dark: ["#E9CFA6", "#E3A261", "#D57537", "#B94B21", "#9A3418"]
   };
   const toLin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   const toSrgb = (c) => Math.round(255 * Math.min(1, Math.max(0, c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)));
