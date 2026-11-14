@@ -243,3 +243,8 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
   .ag-key { margin-top: 4px; font-size: 11px; }
   .ag-sum-line { margin-top: 4px; font-size: 11px; line-height: 1.4; }
 }
+@media (min-width: 1000px) and (min-height: 600px) {
+  .cal-scroll, .agreement { overflow: hidden; }
+  .map { cursor: default; }
+  .leaflet-control-attribution { font-size: 9px; }
+}

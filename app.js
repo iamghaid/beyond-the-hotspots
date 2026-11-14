@@ -208,20 +208,18 @@
   }
 
   // ---------- map ----------
-  let map, tiles;
-  function tileUrl() {
-    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-    return "https://{s}.basemaps.cartocdn.com/" + (dark ? "dark_all" : "light_all") + "/{z}/{x}/{y}{r}.png";
-  }
-  function setMapTheme() { if (tiles) tiles.setUrl(tileUrl()); }
+  let map;
+  function setMapTheme() {}
   function drawMap() {
     if (!window.L) { $("map").textContent = "Map unavailable offline."; return; }
     const b = [[-19.5, -58], [-17, -56]];
-    map = L.map("map", { scrollWheelZoom: false, attributionControl: true }).fitBounds([[-24, -63], [-12, -51]]);
-    tiles = L.tileLayer(tileUrl(), { maxZoom: 12, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO" }).addTo(map);
-    L.rectangle(b, { color: "#DA5E25", weight: 2.5, fillColor: "#F38C48", fillOpacity: 0.25 }).addTo(map)
+    map = L.map("map", { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false, attributionControl: true });
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", { maxZoom: 12, attribution: "Map © Esri, HERE, Garmin, OpenStreetMap" }).addTo(map);
+    L.rectangle(b, { color: "#C93636", weight: 3, fillColor: "#F38C48", fillOpacity: 0.22 }).addTo(map)
       .bindTooltip("Pantanal study area", { permanent: true, direction: "top", className: "area-label", offset: [0, -4] });
-    setTimeout(() => map.invalidateSize(), 200);
+    const fit = () => { map.invalidateSize(); map.fitBounds(b, { padding: [36, 36], maxZoom: 8 }); };
+    fit(); setTimeout(fit, 250);
+    if (window.ResizeObserver) new ResizeObserver(fit).observe($("map"));
   }
 
   // ---------- range + export ----------
