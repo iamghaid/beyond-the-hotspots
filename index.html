@@ -35,16 +35,22 @@
     <h2 id="answer-title" class="answer-q">Can older MODIS records tell the same story as VIIRS?</h2>
     <p class="answer-a">After harmonization, MODIS monthly error against VIIRS fell from <strong>46.1%</strong> to <strong>4.7%</strong> in the two years held out from calibration.</p>
     <p class="note">Error is total absolute monthly difference divided by total observed VIIRS activity. Performance varies within the study area.</p>
+    <ol class="steps" aria-label="How to read this page">
+      <li>Pick a month in the calendar.</li>
+      <li>Switch the source between VIIRS and MODIS.</li>
+      <li>Check whether the month stays ▲ above usual.</li>
+    </ol>
   </section>
 
   <section id="calendar-section" class="card" aria-labelledby="cal-title">
     <div class="card-head">
       <h2 id="cal-title">Monthly activity</h2>
-      <div class="seg" role="radiogroup" aria-label="Data source">
+      <div class="src-pick"><span id="src-label">Compare sources</span>
+      <div class="seg" role="radiogroup" aria-labelledby="src-label">
         <button role="radio" aria-checked="true" data-src="viirs">VIIRS observed</button>
         <button role="radio" aria-checked="false" data-src="modis">MODIS raw</button>
         <button role="radio" aria-checked="false" data-src="modis_cal">MODIS harmonized</button>
-      </div>
+      </div></div>
     </div>
     <p class="note" id="src-note">Observed Suomi NPP VIIRS active cell-days.</p>
     <p class="note mobile-only">Swipe sideways to see every month.</p>
