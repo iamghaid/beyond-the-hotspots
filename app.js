@@ -121,7 +121,9 @@
       "</div>" +
       '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed S-NPP", "snpp", r.snpp, 0) + bar("MODIS on S-NPP scale", "est", r.est, 2) + "</div>" +
       '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · S-NPP hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
-    if (mapLabel) mapLabel.setTooltipContent(AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view)));
+    const mapText = AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
+    if (globeLabel) globeLabel.textContent = mapText;
+    if (mapLabel) mapLabel.setTooltipContent(mapText);
   }
 
   // ---------- chart ----------
@@ -213,8 +215,50 @@
   }
 
   // ---------- map ----------
-  let map, mapLabel;
+  let map, mapLabel, globe, globeLabel;
+  const TEX = "https://unpkg.com/three-globe@2.31.1/example/img/";
   function drawMap() {
+    if (window.Globe && drawGlobe()) return;
+    drawFlatMap();
+  }
+  function drawGlobe() {
+    try {
+      const el = $("map");
+      const probe = document.createElement("canvas");
+      if (!(probe.getContext("webgl2") || probe.getContext("webgl"))) return false;
+      const ring = [[-58, -19.5], [-58, -17], [-56, -17], [-56, -19.5], [-58, -19.5]];
+      const target = { lat: -19.5, lng: -57, altitude: 0.7 };
+      const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      globe = Globe()(el)
+        .width(el.clientWidth).height(el.clientHeight)
+        .backgroundColor("rgba(0,0,0,0)")
+        .globeImageUrl(TEX + "earth-blue-marble.jpg")
+        .bumpImageUrl(TEX + "earth-topology.png")
+        .showAtmosphere(true).atmosphereColor("#7cc4ff").atmosphereAltitude(0.18)
+        .polygonsData([{ geometry: { type: "Polygon", coordinates: [ring] } }])
+        .polygonCapColor(() => "rgba(255,140,60,0.35)").polygonSideColor(() => "rgba(201,54,54,0.6)")
+        .polygonStrokeColor(() => "#ff3b2f").polygonAltitude(0.006)
+        .ringsData(calm ? [] : [{ lat: -18.25, lng: -57 }])
+        .ringColor(() => (t) => "rgba(255,90,60," + (1 - t) + ")").ringMaxRadius(4).ringPropagationSpeed(2).ringRepeatPeriod(1800)
+        .htmlElementsData([{ lat: -15.6, lng: -57 }])
+        .htmlElement(() => { globeLabel = document.createElement("div"); globeLabel.className = "globe-label"; globeLabel.textContent = AREA; return globeLabel; });
+      const c = globe.controls();
+      c.enableZoom = false; c.enablePan = false; c.autoRotate = false;
+      let back;
+      c.addEventListener("start", () => clearTimeout(back));
+      c.addEventListener("end", () => { clearTimeout(back); back = setTimeout(() => globe.pointOfView(target, 1200), 3000); });
+      if (calm) globe.pointOfView(target, 0);
+      else { globe.pointOfView({ lat: 5, lng: -30, altitude: 2.6 }, 0); setTimeout(() => globe.pointOfView(target, 2200), 300); }
+      if (window.ResizeObserver) new ResizeObserver(() => globe.width(el.clientWidth).height(el.clientHeight)).observe(el);
+      el.classList.add("is-globe");
+      return true;
+    } catch (e) {
+      console.error(e);
+      $("map").innerHTML = "";
+      return false;
+    }
+  }
+  function drawFlatMap() {
     if (!window.L) { $("map").textContent = "Map unavailable offline."; return; }
     const b = [[-19.5, -58], [-17, -56]];
     map = L.map("map", { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false, attributionControl: true });
