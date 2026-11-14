@@ -6,15 +6,15 @@
   const AREA = "Pantanal study area";
   const TRANSITION = "2012-02";
   const SERIES = {
-    modis: { label: "Observed MODIS", short: "MODIS", dec: 0 },
-    snpp: { label: "Observed S-NPP VIIRS", short: "S-NPP", dec: 0 },
-    est: { label: "MODIS estimated on the S-NPP scale", short: "Estimate", dec: 2 }
+    modis: { label: "Observed MODIS (Terra + Aqua)", short: "MODIS", dec: 0 },
+    snpp: { label: "Observed VIIRS (S-NPP)", short: "VIIRS", dec: 0 },
+    est: { label: "MODIS estimated on the VIIRS scale", short: "Estimate", dec: 2 }
   };
   const VIEWS = {
-    default: "Observed MODIS until January 2012, then MODIS estimated on the S-NPP scale.",
+    default: "Observed MODIS until January 2012, then MODIS estimated on the VIIRS scale.",
     modis: "Observed MODIS for every month: one consistent measurement across both eras.",
-    snpp: "Observed S-NPP VIIRS. Available from February 2012.",
-    est: "MODIS × 1.84, estimated on the S-NPP scale. Available from February 2012."
+    snpp: "Observed VIIRS (S-NPP). Available from February 2012.",
+    est: "MODIS × 1.84, estimated on the VIIRS scale. Available from February 2012."
   };
   const SCALE_MAX = 8000;
   const RAMPS = {
@@ -65,7 +65,7 @@
     for (let m = 1; m <= 12; m++) {
       const k = y + "-" + String(m).padStart(2, "0");
       const r = state.byKey[k];
-      const era = k === TRANSITION ? '<span class="chip" title="S-NPP VIIRS starts in February 2012">S-NPP</span>' : "";
+      const era = k === TRANSITION ? '<span class="chip" title="VIIRS on the S-NPP satellite starts in February 2012">VIIRS</span>' : "";
       if (!r) { h += '<div class="tile na" role="gridcell" aria-label="' + MONTHS_LONG[m - 1] + " " + y + ', outside the record"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">No data</span></div>'; continue; }
       const v = valueOf(r, state.view);
       const dec = viewDec(r, state.view);
@@ -96,9 +96,9 @@
     const ticks = [0, 10, 100, 1000, SCALE_MAX];
     const pos = (v) => (100 * Math.log10(1 + v) / Math.log10(1 + SCALE_MAX)).toFixed(1) + "%";
     const grad = Array.from({ length: 11 }, (_, i) => colorFor(Math.pow(1 + SCALE_MAX, i / 10) - 1).bg).join(",");
-    const head = state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the S-NPP scale" : "Active cell-days";
+    const head = state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the VIIRS scale" : "Active cell-days";
     $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="ramp" style="background:linear-gradient(90deg,' + grad + ')"></div><div class="ticks">' +
-      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span><span class="key"><b class="chip-key">S-NPP</b>first S-NPP month, Feb 2012</span>';
+      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span><span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>';
   }
 
   // ---------- month detail ----------
@@ -116,11 +116,11 @@
       '<p class="note">' + MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
       '<div class="kvs">' +
       kv("Observed MODIS", r.modis, 0, "Terra + Aqua") +
-      kv("Observed S-NPP VIIRS", r.snpp, 0, paired ? "375 m pixels" : "Before Feb 2012") +
-      kv("MODIS on S-NPP scale", r.est, 2, paired ? "estimate, × 1.84" : "Before Feb 2012") +
+      kv("Observed VIIRS", r.snpp, 0, paired ? "S-NPP · 375 m pixels" : "Before Feb 2012") +
+      kv("MODIS on VIIRS scale", r.est, 2, paired ? "estimate, × 1.84" : "Before Feb 2012") +
       "</div>" +
-      '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed S-NPP", "snpp", r.snpp, 0) + bar("MODIS on S-NPP scale", "est", r.est, 2) + "</div>" +
-      '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · S-NPP hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
+      '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed VIIRS", "snpp", r.snpp, 0) + bar("MODIS on VIIRS scale", "est", r.est, 2) + "</div>" +
+      '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · VIIRS hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
     const mapText = AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
     lastMapText = mapText;
     if (globeLabel) globeLabel.textContent = mapText;
@@ -186,7 +186,7 @@
     const step = years > 12 ? 3 : years > 6 ? 2 : 1;
     rows.forEach((r, i) => { const { y: yy } = split(r.start); if (prevY !== null && yy !== prevY && yy % step === 0) xt += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + yy + "</text>"; prevY = yy; });
     const ti = rows.findIndex((r) => r.start === TRANSITION);
-    const trans = ti >= 0 ? '<line x1="' + x(ti) + '" x2="' + x(ti) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text-2") + '" stroke-width="1.5"/><text class="t-label" x="' + (x(ti) + 5) + '" y="' + (m.t + 12) + '">S-NPP starts</text>' : "";
+    const trans = ti >= 0 ? '<line x1="' + x(ti) + '" x2="' + x(ti) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text-2") + '" stroke-width="1.5"/><text class="t-label" x="' + (x(ti) + 5) + '" y="' + (m.t + 12) + '">VIIRS starts</text>' : "";
     let selLine = "";
     if (weekly) {
       const hits = rows.map((r, i) => (r.start.slice(0, 7) === state.sel || r.end.slice(0, 7) === state.sel) ? i : -1).filter((i) => i >= 0);
@@ -195,7 +195,7 @@
       const si = rows.findIndex((r) => r.start === state.sel);
       selLine = si >= 0 ? '<line x1="' + x(si) + '" x2="' + x(si) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text") + '" stroke-width="1.5" stroke-dasharray="2 3"/>' : "";
     }
-    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed S-NPP VIIRS and the S-NPP-scale estimate, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed VIIRS (S-NPP) and the VIIRS-scale estimate, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
       '<g class="grid axis">' + g + xt + "</g>" + trans + selLine +
       '<path d="' + path("modis") + '" fill="none" stroke="' + c("--modis") + '" stroke-width="1.5"/>' +
       '<path d="' + path("snpp") + '" fill="none" stroke="' + c("--viirs") + '" stroke-width="2" stroke-linejoin="round"/>' +
@@ -209,7 +209,7 @@
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       tip.hidden = false;
       tip.innerHTML = "<b>" + (weekly ? spanLabel(r) : label(r.start, true)) + " · " + AREA + "</b>" +
-        "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed S-NPP</em>" + fmt(r.snpp) + "</span><span><em>MODIS on S-NPP scale</em>" + fmt(r.est, 2) + "</span>";
+        "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed VIIRS (S-NPP)</em>" + fmt(r.snpp) + "</span><span><em>MODIS on VIIRS scale</em>" + fmt(r.est, 2) + "</span>";
       const bx = box.getBoundingClientRect(), sx = (x(i) / W) * bx.width;
       tip.style.left = (sx + 230 > bx.width ? sx - 236 : sx + 14) + "px";
       tip.style.top = (box.offsetTop + 8) + "px";
@@ -221,11 +221,11 @@
 
   function drawTable() {
     if (state.grain === "week") {
-      $("table").innerHTML = "<thead><tr><th>Week</th><th>Season</th><th>Observed MODIS</th><th>Observed S-NPP</th><th>MODIS on S-NPP scale</th></tr></thead><tbody>" +
+      $("table").innerHTML = "<thead><tr><th>Week</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>MODIS on VIIRS scale</th></tr></thead><tbody>" +
         weekRows().map((w) => "<tr><td>" + spanLabel(w) + "</td><td>" + seasonLabel(w.season) + "</td><td>" + fmt(w.modis) + "</td><td>" + fmt(w.snpp) + "</td><td>" + fmt(w.est, 2) + "</td></tr>").join("") + "</tbody>";
       return;
     }
-    $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed S-NPP</th><th>MODIS on S-NPP scale</th></tr></thead><tbody>" +
+    $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed VIIRS (S-NPP)</th><th>MODIS on VIIRS scale</th></tr></thead><tbody>" +
       rangeRows().map((r) => "<tr><td>" + label(r.start) + "</td><td>" + seasonLabel(r.season) + "</td><td>" + fmt(r.modis) + "</td><td>" + fmt(r.snpp) + "</td><td>" + fmt(r.est, 2) + "</td></tr>").join("") + "</tbody>";
   }
 
@@ -233,10 +233,10 @@
   function drawAgreement() {
     const rows = state.rows.filter((r) => r.flags);
     const methods = [
-      { i: 0, name: "S-NPP VIIRS", sub: "reference", short: "S-NPP" },
-      { i: 1, name: "MODIS raw", sub: "S-NPP threshold", short: "raw" },
+      { i: 0, name: "VIIRS (S-NPP)", sub: "reference", short: "VIIRS" },
+      { i: 1, name: "MODIS raw", sub: "VIIRS threshold", short: "raw" },
       { i: 2, name: "MODIS raw", sub: "own threshold", short: "own threshold" },
-      { i: 3, name: "MODIS estimate", sub: "S-NPP threshold", short: "estimate" }
+      { i: 3, name: "MODIS estimate", sub: "VIIRS threshold", short: "estimate" }
     ];
     let h = "<div></div>" + rows.map((r) => { const { y, m } = split(r.start); return '<div class="hd">' + MONTHS[m - 1] + (m === 1 ? " '" + String(y).slice(2) : "") + "</div>"; }).join("");
     for (const md of methods) {
@@ -258,8 +258,8 @@
     const ms = methods.filter((x) => x.sum);
     $("ag-summary").innerHTML =
       '<div class="ag-key"><span><i style="background:var(--alert)"></i>Caught</span><span><i style="box-shadow:inset 0 0 0 2px var(--alert)"></i>Missed</span><span><i style="background:repeating-linear-gradient(45deg,var(--median) 0 3px,transparent 3px 7px)"></i>Extra high call</span></div>' +
-      '<p class="ag-sum-line"><b>Months that disagree with S-NPP:</b> ' + ms.map((x) => x.short + " " + x.sum.off + "/" + x.sum.n).join(" · ") +
-      "<br><b>S-NPP-high month caught:</b> " + ms.map((x) => x.short + " " + x.sum.caught + "/" + x.sum.ref).join(" · ") + " (one high month: a first result, not proof)</p>";
+      '<p class="ag-sum-line"><b>Months that disagree with VIIRS:</b> ' + ms.map((x) => x.short + " " + x.sum.off + "/" + x.sum.n).join(" · ") +
+      "<br><b>VIIRS-high month caught:</b> " + ms.map((x) => x.short + " " + x.sum.caught + "/" + x.sum.ref).join(" · ") + " (one high month: a first result, not proof)</p>";
   }
 
   // ---------- map ----------
@@ -358,7 +358,7 @@
     for (const r of rangeRows()) {
       const paired = r.display === "est";
       const vals = [r.start, r.start + "-01", r.start + "-" + lastDay(r.start), seasonLabel(r.season), AREA, r.modis, r.aqua, r.terra, r.snpp ?? "", r.est ?? "", r[r.display],
-        paired ? "MODIS estimated on the S-NPP scale" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
+        paired ? "MODIS estimated on the VIIRS scale" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
         meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"];
       lines.push(vals.map((v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(","));
     }

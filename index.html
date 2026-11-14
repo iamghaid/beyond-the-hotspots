@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Beyond the Hotspots · Pantanal burning activity calendar</title>
-<meta name="description" content="Monthly satellite burning activity for a Pantanal study area, February 2003 – January 2026: observed MODIS, observed S-NPP VIIRS, and MODIS estimated on the S-NPP scale.">
+<meta name="description" content="Monthly satellite burning activity for a Pantanal study area, February 2003 – January 2026: observed MODIS, observed VIIRS (S-NPP), and MODIS estimated on the VIIRS scale.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,7 @@
     <h1>Beyond the Hotspots</h1>
     <p class="sub">Pantanal burning activity calendar · <span id="span-label">February 2003 – January 2026</span></p>
   </div>
-  <p class="answer">MODIS error vs observed S-NPP after harmonization: <strong>44.48%</strong> → <strong>11.51%</strong> <span class="note">across 120 months held out from fitting (10 seasons)</span></p>
+  <p class="answer">MODIS error vs observed VIIRS after harmonization: <strong>44.48%</strong> → <strong>11.51%</strong> <span class="note">across 120 months held out from fitting (10 seasons)</span></p>
   <div class="actions">
     <button id="download" class="primary" type="button">Download CSV</button>
     <button id="theme-toggle" class="ghost" type="button" aria-label="Switch color theme">Dark mode</button>
@@ -50,9 +50,9 @@
     <div class="seg-row">
       <div class="seg" role="radiogroup" aria-label="Series shown in the calendar">
         <button role="radio" aria-checked="true" data-src="default">Calendar view</button>
-        <button role="radio" aria-checked="false" data-src="modis" title="Observed MODIS">MODIS</button>
-        <button role="radio" aria-checked="false" data-src="snpp" title="Observed S-NPP VIIRS">S-NPP</button>
-        <button role="radio" aria-checked="false" data-src="est" title="MODIS estimated on the S-NPP scale">Estimate</button>
+        <button role="radio" aria-checked="false" data-src="modis" title="Observed MODIS (Terra + Aqua)">MODIS</button>
+        <button role="radio" aria-checked="false" data-src="snpp" title="Observed VIIRS (S-NPP)">VIIRS</button>
+        <button role="radio" aria-checked="false" data-src="est" title="MODIS estimated on the VIIRS scale">Estimate</button>
       </div>
     </div>
     <p class="note" id="src-note"></p>
@@ -81,9 +81,9 @@
       </div>
     </div>
     <div class="series-key" aria-hidden="true">
-      <span><i class="ln modis"></i>Observed MODIS</span>
-      <span><i class="ln snpp"></i>Observed S-NPP VIIRS</span>
-      <span><i class="ln est"></i>MODIS estimated on the S-NPP scale</span>
+      <span><i class="ln modis"></i>Observed MODIS (Terra + Aqua)</span>
+      <span><i class="ln snpp"></i>Observed VIIRS (S-NPP)</span>
+      <span><i class="ln est"></i>MODIS estimated on the VIIRS scale</span>
     </div>
     <p class="note" id="grain-note" hidden>Weeks run Monday to Sunday and are cut at the February–January season boundary. Weekly data start in February 2012. Month totals come from the monthly data.</p>
     <div id="chart" class="chart"></div>
@@ -102,15 +102,15 @@
       <summary>Methods and results</summary>
       <div class="pop-body">
         <h3>How the estimate works</h3>
-        <p>Combined Terra and Aqua MODIS activity × <b>1.84</b>, fitted against observed S-NPP VIIRS on full weeks from 2013–2014 to 2016–2017.</p>
+        <p>Combined Terra and Aqua MODIS activity × <b>1.84</b>, fitted against observed VIIRS (S-NPP) on full weeks from 2013–2014 to 2016–2017.</p>
         <ul class="facts">
           <li><b>120 held-out months, 10 seasons:</b> weighted absolute error 44.48% → 11.51%.</li>
           <li><b>8 later seasons, 2018–2026:</b> 44.18% → 12.75% across 96 months.</li>
-          <li>Weighted absolute error = sum of absolute differences ÷ total observed S-NPP activity, for the fixed rectangle.</li>
+          <li>Weighted absolute error = sum of absolute differences ÷ total observed VIIRS activity, for the fixed rectangle.</li>
           <li>Agreement is weaker in quiet weeks, at night, and with MODIS version 61.03. Coverage, fires on the ground and subarea performance are unverified.</li>
         </ul>
         <h3>Example check: unusual months in 2017–2018</h3>
-        <p class="note">Each method's call compared with observed S-NPP. Above usual = past the 75th percentile of the same month in the five seasons 2012–2017. A scoped methods example, not an anomaly calendar.</p>
+        <p class="note">Each method's call compared with observed VIIRS. Above usual = past the 75th percentile of the same month in the five seasons 2012–2017. A scoped methods example, not an anomaly calendar.</p>
         <div id="agreement" class="agreement"></div>
         <div id="ag-summary"></div>
       </div>
@@ -120,9 +120,9 @@
       <div class="pop-body">
         <ul class="facts">
           <li><b>Active cell-day:</b> a 2 × 2 km equal-area cell with one or more qualifying detections on one local day. It counts detected burning activity, not individual fires, burned area or risk.</li>
-          <li><b>Qualifying detections:</b> inferred vegetation fire (type 0), MODIS confidence ≥ 30, S-NPP nominal or high confidence. Local dates in America/Cuiaba.</li>
-          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed S-NPP VIIRS and the S-NPP-scale estimate.</li>
-          <li><b>Status:</b> satellite coverage unverified throughout. S-NPP hotspot typing is provisional. MODIS versions 6.03 and 61.03.</li>
+          <li><b>Qualifying detections:</b> inferred vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS nominal or high confidence. Local dates in America/Cuiaba.</li>
+          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed VIIRS (S-NPP) and the VIIRS-scale estimate.</li>
+          <li><b>Status:</b> satellite coverage unverified throughout. VIIRS hotspot typing is provisional. MODIS versions 6.03 and 61.03.</li>
           <li><b>Download:</b> <span id="dl-range"></span>.</li>
         </ul>
       </div>
