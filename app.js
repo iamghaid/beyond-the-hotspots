@@ -122,6 +122,7 @@
       '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed S-NPP", "snpp", r.snpp, 0) + bar("MODIS on S-NPP scale", "est", r.est, 2) + "</div>" +
       '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · S-NPP hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
     const mapText = AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
+    lastMapText = mapText;
     if (globeLabel) globeLabel.textContent = mapText;
     if (mapLabel) mapLabel.setTooltipContent(mapText);
   }
@@ -215,7 +216,7 @@
   }
 
   // ---------- map ----------
-  let map, mapLabel, globe, globeLabel;
+  let map, mapLabel, globe, globeLabel, lastMapText = "";
   const TEX = "https://unpkg.com/three-globe@2.31.1/example/img/";
   function drawMap() {
     if (window.Globe && drawGlobe()) return;
@@ -241,7 +242,7 @@
         .ringsData(calm ? [] : [{ lat: -18.25, lng: -57 }])
         .ringColor(() => (t) => "rgba(255,90,60," + (1 - t) + ")").ringMaxRadius(4).ringPropagationSpeed(2).ringRepeatPeriod(1800)
         .htmlElementsData([{ lat: -15.6, lng: -57 }])
-        .htmlElement(() => { globeLabel = document.createElement("div"); globeLabel.className = "globe-label"; globeLabel.textContent = AREA; return globeLabel; });
+        .htmlElement(() => { globeLabel = document.createElement("div"); globeLabel.className = "globe-label"; globeLabel.textContent = lastMapText || AREA; return globeLabel; });
       const c = globe.controls();
       c.enableZoom = false; c.enablePan = false; c.autoRotate = false;
       let back;
