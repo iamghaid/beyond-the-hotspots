@@ -294,3 +294,6 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
 .map.is-globe { background: radial-gradient(circle at 50% 45%, #1b2a44 0%, #0b1220 70%); cursor: grab; }
 .map.is-globe:active { cursor: grabbing; }
 .globe-label { background: #13202E; color: #fff; font: 700 12px "Atkinson Hyperlegible Next", sans-serif; padding: 4px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.chart-card .card-head { gap: 10px; }
+.chart-card .grain button { padding: 5px 10px; font-size: 13px; min-height: 32px; }
+.chart .empty { color: var(--text-2); font-size: 14px; padding: 24px 8px; margin: 0; }

@@ -71,6 +71,10 @@
   <section class="card chart-card" aria-labelledby="chart-title">
     <div class="card-head">
       <h2 id="chart-title">Three series over time</h2>
+      <div class="seg grain" role="radiogroup" aria-label="Time step">
+        <button role="radio" aria-checked="true" data-grain="month">Monthly</button>
+        <button role="radio" aria-checked="false" data-grain="week">Weekly</button>
+      </div>
       <div class="range">
         <label>From season <select id="from"></select></label>
         <label>to <select id="to"></select></label>
@@ -81,6 +85,7 @@
       <span><i class="ln snpp"></i>Observed S-NPP VIIRS</span>
       <span><i class="ln est"></i>MODIS estimated on the S-NPP scale</span>
     </div>
+    <p class="note" id="grain-note" hidden>Weeks run Monday to Sunday and are cut at the February–January season boundary. Weekly data start in February 2012. Month totals come from the monthly data.</p>
     <div id="chart" class="chart"></div>
     <div id="tip" class="tip" role="status" hidden></div>
     <details class="table-view">

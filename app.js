@@ -43,7 +43,7 @@
     return { bg: "rgb(" + rgb.map(toSrgb).join(",") + ")", ink: lum > 0.28 ? "#13202E" : "#FFFFFF" };
   }
 
-  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {} };
+  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", weeks: null };
   const $ = (id) => document.getElementById(id);
   const fmt = (v, d = 0) => v == null ? "Unavailable" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: d });
   const split = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
@@ -127,10 +127,45 @@
     if (mapLabel) mapLabel.setTooltipContent(mapText);
   }
 
+  // ---------- weekly data (optional) ----------
+  const iso = (d) => d.toISOString().slice(0, 10);
+  async function loadWeeks() {
+    if (state.weeks) return state.weeks;
+    const res = await fetch("weekly.json");
+    if (!res.ok) throw new Error(res.status);
+    const raw = await res.json();
+    let d = new Date(raw.first + "T00:00:00Z");
+    state.weeks = raw.rows.map(([days, modis, snpp]) => {
+      const start = iso(d), endD = new Date(d.getTime() + (days - 1) * 864e5), end = iso(endD);
+      d = new Date(endD.getTime() + 864e5);
+      const { y, m } = split(start);
+      const partial = days < 7;
+      return { start, end, days, partial, season: y - (m === 1 ? 1 : 0), modis, snpp, est: partial || modis === 0 ? null : Math.round(modis * raw.factor * 100) / 100 };
+    });
+    return state.weeks;
+  }
+  const weekRows = () => (state.weeks || []).filter(inRange);
+  function spanLabel(w) {
+    const a = split(w.start), b = split(w.end), da = +w.start.slice(8), db = +w.end.slice(8);
+    const left = MONTHS[a.m - 1] + " " + da, right = (a.m === b.m ? "" : MONTHS[b.m - 1] + " ") + db;
+    return left + "–" + right + ", " + b.y + (w.partial ? " · partial week (" + w.days + " days)" : "");
+  }
+  async function setGrain(g) {
+    document.querySelectorAll(".grain button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.grain === g)));
+    $("grain-note").hidden = g !== "week";
+    if (g === "week") {
+      try { await loadWeeks(); }
+      catch (e) { $("chart").innerHTML = '<p class="empty">Weekly data didn\'t load. Refresh the page and try again.</p>'; state.grain = "month"; return; }
+    }
+    state.grain = g; drawChart(); drawTable();
+  }
+
   // ---------- chart ----------
   function drawChart() {
-    const rows = rangeRows();
+    const weekly = state.grain === "week";
+    const rows = weekly ? weekRows() : rangeRows();
     const box = $("chart");
+    if (!rows.length) { box.innerHTML = '<p class="empty">No weekly data in these seasons. Weekly data start in February 2012 (season 2012–2013).</p>'; return; }
     const W = Math.max(320, box.clientWidth || 800), H = Math.max(140, box.clientHeight || 200);
     const m = { t: 10, r: 10, b: 22, l: 46 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -146,13 +181,20 @@
       g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
       g += '<text x="' + (m.l - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + fmt(v) + "</text>";
     }
-    let xt = "";
-    const step = rows.length > 120 ? 3 : 1;
-    rows.forEach((r, i) => { const { y: yy, m: mm } = split(r.start); if (mm === 1 && yy % step === 0) xt += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + yy + "</text>"; });
+    let xt = "", prevY = null;
+    const years = new Set(rows.map((r) => split(r.start).y)).size;
+    const step = years > 12 ? 3 : years > 6 ? 2 : 1;
+    rows.forEach((r, i) => { const { y: yy } = split(r.start); if (prevY !== null && yy !== prevY && yy % step === 0) xt += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + yy + "</text>"; prevY = yy; });
     const ti = rows.findIndex((r) => r.start === TRANSITION);
     const trans = ti >= 0 ? '<line x1="' + x(ti) + '" x2="' + x(ti) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text-2") + '" stroke-width="1.5"/><text class="t-label" x="' + (x(ti) + 5) + '" y="' + (m.t + 12) + '">S-NPP starts</text>' : "";
-    const si = rows.findIndex((r) => r.start === state.sel);
-    const selLine = si >= 0 ? '<line x1="' + x(si) + '" x2="' + x(si) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text") + '" stroke-width="1.5" stroke-dasharray="2 3"/>' : "";
+    let selLine = "";
+    if (weekly) {
+      const hits = rows.map((r, i) => (r.start.slice(0, 7) === state.sel || r.end.slice(0, 7) === state.sel) ? i : -1).filter((i) => i >= 0);
+      if (hits.length) { const x0 = x(hits[0]) - 2, x1 = x(hits[hits.length - 1]) + 2; selLine = '<rect x="' + x0 + '" y="' + m.t + '" width="' + Math.max(3, x1 - x0) + '" height="' + ih + '" fill="' + c("--text") + '" opacity=".12"/>'; }
+    } else {
+      const si = rows.findIndex((r) => r.start === state.sel);
+      selLine = si >= 0 ? '<line x1="' + x(si) + '" x2="' + x(si) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text") + '" stroke-width="1.5" stroke-dasharray="2 3"/>' : "";
+    }
     box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Monthly active cell-days for observed MODIS, observed S-NPP VIIRS and the S-NPP-scale estimate, ' + seasonLabel(state.from) + " to " + seasonLabel(state.to) + '">' +
       '<g class="grid axis">' + g + xt + "</g>" + trans + selLine +
       '<path d="' + path("modis") + '" fill="none" stroke="' + c("--modis") + '" stroke-width="1.5"/>' +
@@ -166,18 +208,23 @@
       const i = idxAt(ev), r = rows[i];
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       tip.hidden = false;
-      tip.innerHTML = "<b>" + label(r.start, true) + " · " + AREA + "</b>" +
+      tip.innerHTML = "<b>" + (weekly ? spanLabel(r) : label(r.start, true)) + " · " + AREA + "</b>" +
         "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed S-NPP</em>" + fmt(r.snpp) + "</span><span><em>MODIS on S-NPP scale</em>" + fmt(r.est, 2) + "</span>";
       const bx = box.getBoundingClientRect(), sx = (x(i) / W) * bx.width;
       tip.style.left = (sx + 230 > bx.width ? sx - 236 : sx + 14) + "px";
       tip.style.top = (box.offsetTop + 8) + "px";
     });
     hit.addEventListener("pointerleave", () => { hl.setAttribute("visibility", "hidden"); tip.hidden = true; });
-    hit.addEventListener("click", (ev) => select(rows[idxAt(ev)].start));
+    hit.addEventListener("click", (ev) => select(rows[idxAt(ev)].start.slice(0, 7)));
   }
   function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const s of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (s * p >= v) return s * p; return 10 * p; }
 
   function drawTable() {
+    if (state.grain === "week") {
+      $("table").innerHTML = "<thead><tr><th>Week</th><th>Season</th><th>Observed MODIS</th><th>Observed S-NPP</th><th>MODIS on S-NPP scale</th></tr></thead><tbody>" +
+        weekRows().map((w) => "<tr><td>" + spanLabel(w) + "</td><td>" + seasonLabel(w.season) + "</td><td>" + fmt(w.modis) + "</td><td>" + fmt(w.snpp) + "</td><td>" + fmt(w.est, 2) + "</td></tr>").join("") + "</tbody>";
+      return;
+    }
     $("table").innerHTML = "<thead><tr><th>Month</th><th>Season</th><th>Observed MODIS</th><th>Observed S-NPP</th><th>MODIS on S-NPP scale</th></tr></thead><tbody>" +
       rangeRows().map((r) => "<tr><td>" + label(r.start) + "</td><td>" + seasonLabel(r.season) + "</td><td>" + fmt(r.modis) + "</td><td>" + fmt(r.snpp) + "</td><td>" + fmt(r.est, 2) + "</td></tr>").join("") + "</tbody>";
   }
@@ -289,7 +336,22 @@
     $("dl-range").textContent = "seasons " + seasonLabel(state.from) + " to " + seasonLabel(state.to) + " (" + rangeRows().length + " months), with all three series, season, coverage and source";
     drawCalendar(); drawChart(); drawTable();
   }
+  function downloadWeeks() {
+    const meta = state.meta;
+    const cols = ["week_start_local", "week_end_local", "days", "is_partial_week", "season", "study_area", "observed_modis_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "coverage_status", "viirs_type_status", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
+    const lines = [cols.join(",")];
+    for (const w of weekRows()) lines.push([w.start, w.end, w.days, w.partial ? "True" : "False", seasonLabel(w.season), AREA, w.modis, w.snpp, w.est ?? "", meta.coverage_status, meta.viirs_type_status_paired, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"].join(","));
+    saveCsv(lines, "pantanal_weekly_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv");
+  }
+  function saveCsv(lines, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
   function download() {
+    if (state.grain === "week") return downloadWeeks();
     const meta = state.meta;
     const cols = ["month_id", "period_start_local", "period_end_local", "season", "study_area", "observed_modis_cell_days", "aqua_cell_days", "terra_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "calendar_view_value", "calendar_view_series", "coverage_status", "viirs_type_status", "modis_versions", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
     const lines = [cols.join(",")];
@@ -376,6 +438,7 @@
     });
     document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
     $("download").addEventListener("click", download);
+    document.querySelectorAll(".grain button").forEach((b) => b.addEventListener("click", () => setGrain(b.dataset.grain)));
     let rt;
     addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); fitCells(); }, 120); });
     if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); fitCells(); }, 80); }).observe($("chart"));
