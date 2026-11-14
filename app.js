@@ -16,8 +16,32 @@
     snpp: "Observed S-NPP VIIRS. Available from February 2012.",
     est: "MODIS × 1.84, estimated on the S-NPP scale. Available from February 2012."
   };
-  const BINS = [50, 200, 500, 2000];
-  const BIN_LABELS = ["<50", "50–199", "200–499", "500–1,999", "2,000+"];
+  const SCALE_MAX = 8000;
+  const RAMPS = {
+    light: ["#FBEBD3", "#F7C98C", "#EE9446", "#CF5A23", "#8F2A14"],
+    dark: ["#4A3426", "#8A4A26", "#C8692C", "#F0A050", "#FFE0A6"]
+  };
+  const toLin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const toSrgb = (c) => Math.round(255 * Math.min(1, Math.max(0, c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)));
+  function hexToLab(hex) {
+    const [r, g, b] = [1, 3, 5].map((i) => toLin(parseInt(hex.slice(i, i + 2), 16)));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+  }
+  function labToRgb([L, a, b]) {
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+  }
+  const isDarkTheme = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  function colorFor(v) {
+    const stops = RAMPS[isDarkTheme() ? "dark" : "light"].map(hexToLab);
+    const t = Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + SCALE_MAX)) * (stops.length - 1);
+    const i = Math.min(stops.length - 2, Math.floor(t)), f = t - i;
+    const lab = stops[i].map((c, j) => c + (stops[i + 1][j] - c) * f);
+    const rgb = labToRgb(lab);
+    const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+    return { bg: "rgb(" + rgb.map(toSrgb).join(",") + ")", ink: lum > 0.28 ? "#13202E" : "#FFFFFF" };
+  }
 
   const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {} };
   const $ = (id) => document.getElementById(id);
@@ -36,30 +60,26 @@
   // ---------- calendar ----------
   function drawCalendar() {
     const cal = $("calendar");
-    const years = [...new Set(state.rows.map((r) => split(r.start).y))];
-    let h = '<div class="hd"></div>' + MONTHS.map((m) => '<div class="hd" role="columnheader">' + m + "</div>").join("");
-    for (const y of years) {
-      h += '<div class="yr" role="rowheader">' + y + "</div>";
-      for (let m = 1; m <= 12; m++) {
-        const k = y + "-" + String(m).padStart(2, "0");
-        const r = state.byKey[k];
-        const era = k === TRANSITION ? " era-start" : "";
-        if (!r) { h += '<div class="cell na" role="gridcell" aria-label="' + MONTHS_LONG[m - 1] + " " + y + ', outside the record"></div>'; continue; }
-        const v = valueOf(r, state.view);
-        const dec = viewDec(r, state.view);
-        const sel = k === state.sel;
-        const common = ' role="gridcell" data-k="' + k + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
-        if (v == null) {
-          h += '<button class="cell unavail' + era + (inRange(r) ? "" : " out") + '"' + common + ' aria-label="' + label(k, true) + ': unavailable"><span class="v">–</span></button>';
-        } else {
-          const b = bin(v);
-          h += '<button class="cell' + era + (inRange(r) ? "" : " out") + '"' + common +
-            ' style="background:var(--fire-' + b + ');color:var(--ink-' + b + ')"' +
-            ' aria-label="' + label(k, true) + ": " + fmt(v, dec) + ' active cell-days"><span class="v">' + compact(v) + "</span></button>";
-        }
+    const y = split(state.sel).y;
+    let h = "";
+    for (let m = 1; m <= 12; m++) {
+      const k = y + "-" + String(m).padStart(2, "0");
+      const r = state.byKey[k];
+      const era = k === TRANSITION ? '<span class="chip" title="S-NPP VIIRS starts in February 2012">S-NPP</span>' : "";
+      if (!r) { h += '<div class="tile na" role="gridcell" aria-label="' + MONTHS_LONG[m - 1] + " " + y + ', outside the record"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">No data</span></div>'; continue; }
+      const v = valueOf(r, state.view);
+      const dec = viewDec(r, state.view);
+      const sel = k === state.sel;
+      const common = ' role="gridcell" data-k="' + k + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
+      if (v == null) {
+        h += '<button class="tile unavail"' + common + ' aria-label="' + label(k, true) + ': unavailable"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">Unavailable</span>' + era + "</button>";
+      } else {
+        const col = colorFor(v);
+        h += '<button class="tile"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" aria-label="' + label(k, true) + ": " + fmt(v, dec) + ' active cell-days"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">' + fmt(v, dec) + '</span><span class="tu">cell-days</span>' + era + "</button>";
       }
     }
     cal.innerHTML = h;
+    $("year").value = y; $("month").value = split(state.sel).m;
     $("src-note").textContent = VIEWS[state.view];
     drawLegend();
     requestAnimationFrame(fitCells);
@@ -73,11 +93,12 @@
     $("calendar").classList.toggle("small", hgt >= 11 && hgt < 16);
   }
   function drawLegend() {
-    const sw = BIN_LABELS.map((t, i) => '<span class="key"><i style="background:var(--fire-' + (i + 1) + ')"></i>' + t + "</span>").join("");
-    const eraKey = '<span class="key"><i class="era-key"></i>Feb 2012: S-NPP VIIRS starts</span><span class="key"><i class="hatch"></i>Unavailable</span>';
-    let head = "Active cell-days";
-    if (state.view === "default") head = "2003–Jan 2012 observed MODIS · Feb 2012–2026 estimate on S-NPP scale";
-    $("legend").innerHTML = '<span class="legend-head">' + head + "</span>" + sw + eraKey;
+    const ticks = [0, 10, 100, 1000, SCALE_MAX];
+    const pos = (v) => (100 * Math.log10(1 + v) / Math.log10(1 + SCALE_MAX)).toFixed(1) + "%";
+    const grad = Array.from({ length: 11 }, (_, i) => colorFor(Math.pow(1 + SCALE_MAX, i / 10) - 1).bg).join(",");
+    const head = state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the S-NPP scale" : "Active cell-days";
+    $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="ramp" style="background:linear-gradient(90deg,' + grad + ')"></div><div class="ticks">' +
+      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span><span class="key"><b class="chip-key">S-NPP</b>first S-NPP month, Feb 2012</span>';
   }
 
   // ---------- month detail ----------
@@ -243,9 +264,14 @@
 
   // ---------- interactions ----------
   function select(k, focus) {
-    if (!state.byKey[k]) return;
+    if (!state.byKey[k]) {
+      const { y, m } = split(k);
+      const near = state.rows.find((r) => split(r.start).y === y && split(r.start).m >= m) || state.rows.filter((r) => split(r.start).y === y).pop();
+      if (!near) return;
+      k = near.start;
+    }
     state.sel = k; drawCalendar(); drawDetail(); drawChart();
-    if (focus) document.querySelector('.cell[data-k="' + k + '"]')?.focus();
+    if (focus) document.querySelector('.tile[data-k="' + k + '"]')?.focus();
   }
   function setView(v) {
     state.view = v;
@@ -260,9 +286,9 @@
       const t = isDark() ? "light" : "dark";
       document.documentElement.dataset.theme = t;
       try { localStorage.setItem("theme", t); } catch (e) {}
-      sync(); drawChart();
+      sync(); drawChart(); drawCalendar();
     });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); drawCalendar(); });
     sync();
   }
 
@@ -288,10 +314,15 @@
     const first = state.rows[0].start, last = state.rows[state.rows.length - 1].start;
     $("span-label").textContent = label(first, true) + " – " + label(last, true);
 
+    const years = [...new Set(state.rows.map((r) => split(r.start).y))];
+    $("year").innerHTML = years.map((y) => '<option value="' + y + '">' + y + "</option>").join("");
+    $("month").innerHTML = MONTHS_LONG.map((n, i) => '<option value="' + (i + 1) + '">' + n + "</option>").join("");
+    const pick = () => select($("year").value + "-" + String($("month").value).padStart(2, "0"));
+    $("year").addEventListener("change", pick); $("month").addEventListener("change", pick);
     const cal = $("calendar");
-    cal.addEventListener("click", (e) => { const b = e.target.closest("button.cell"); if (b) select(b.dataset.k, true); });
+    cal.addEventListener("click", (e) => { const b = e.target.closest("button.tile"); if (b) select(b.dataset.k, true); });
     cal.addEventListener("keydown", (e) => {
-      const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -12, ArrowDown: 12, Home: -999, End: 999 };
+      const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -4, ArrowDown: 4, Home: -999, End: 999 };
       if (!(e.key in moves)) return;
       e.preventDefault();
       let k = shift(state.sel, moves[e.key]);

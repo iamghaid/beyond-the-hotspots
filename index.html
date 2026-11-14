@@ -42,6 +42,12 @@
   <section class="card cal-card" aria-labelledby="cal-title">
     <div class="card-head">
       <h2 id="cal-title">Monthly activity</h2>
+      <div class="pickers">
+        <label>Year <select id="year" aria-label="Year"></select></label>
+        <label>Month <select id="month" aria-label="Month"></select></label>
+      </div>
+    </div>
+    <div class="seg-row">
       <div class="seg" role="radiogroup" aria-label="Series shown in the calendar">
         <button role="radio" aria-checked="true" data-src="default">Calendar view</button>
         <button role="radio" aria-checked="false" data-src="modis" title="Observed MODIS">MODIS</button>
@@ -50,7 +56,7 @@
       </div>
     </div>
     <p class="note" id="src-note"></p>
-    <div class="cal-scroll"><div id="calendar" class="calendar" role="grid" aria-label="Active cell-days by month. Use arrow keys to move between months." tabindex="-1"></div></div>
+    <div class="cal-scroll"><div id="calendar" class="months" role="grid" aria-label="Active cell-days for each month of the selected year. Use arrow keys to move between months." tabindex="-1"></div></div>
     <div class="legend" id="legend" aria-hidden="true"></div>
   </section>
 
