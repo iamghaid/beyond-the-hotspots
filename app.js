@@ -382,7 +382,7 @@
   }
   function setView(v) {
     state.view = v;
-    document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.src === v)));
+    document.querySelectorAll(".seg button[data-src]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.src === v)));
     drawCalendar(); drawDetail();
   }
   function setupTheme() {
@@ -436,7 +436,7 @@
       if (!state.byKey[k]) k = moves[e.key] < 0 ? first : last;
       select(k, true);
     });
-    document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
+    document.querySelectorAll(".seg button[data-src]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
     $("download").addEventListener("click", download);
     document.querySelectorAll(".grain button").forEach((b) => b.addEventListener("click", () => setGrain(b.dataset.grain)));
     let rt;
