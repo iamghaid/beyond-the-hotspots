@@ -168,18 +168,18 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
 .foot p { margin: 0; }
 
 @media (max-width: 1100px) {
-  .dash { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "cal cal" "map det" "chart chart"; }
-  .top { grid-template-columns: 1fr auto; }
-  .answer { grid-column: 1 / -1; grid-row: 2; text-align: left; }
+  html:not(.fit) .dash { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "cal cal" "map det" "chart chart"; }
+  html:not(.fit) .top { grid-template-columns: 1fr auto; }
+  html:not(.fit) .answer { grid-column: 1 / -1; grid-row: 2; text-align: left; }
 }
 @media (max-width: 700px) {
-  .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cal" "det" "map" "chart"; padding: 0 12px 12px; }
-  .top { padding: 12px; grid-template-columns: 1fr; gap: 10px; }
-  .actions { order: 3; }
-  .steps { justify-content: flex-start; flex-direction: column; padding: 8px 12px; }
-  .map { min-height: 220px; }
-  .bar-row { grid-template-columns: 110px 1fr 54px; }
-  .agreement { grid-template-columns: 104px repeat(12, 24px); }
+  html:not(.fit) .dash { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cal" "det" "map" "chart"; padding: 0 12px 12px; }
+  html:not(.fit) .top { padding: 12px; grid-template-columns: 1fr; gap: 10px; }
+  html:not(.fit) .actions { order: 3; }
+  html:not(.fit) .steps { justify-content: flex-start; flex-direction: column; padding: 8px 12px; }
+  html:not(.fit) .map { min-height: 220px; }
+  html:not(.fit) .bar-row { grid-template-columns: 110px 1fr 54px; }
+  html:not(.fit) .agreement { grid-template-columns: 104px repeat(12, 24px); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -207,48 +207,28 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
 .pop-body h3:first-child { margin-top: 0; }
 
 /* fit exactly one screen on laptops and desktops */
-@media (min-width: 1000px) and (min-height: 600px) {
-  html, body { height: 100%; }
-  body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-  .top, .steps, .foot { flex: none; }
-  .dash { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); padding-bottom: 8px; }
-  .dash > .card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-  .cal-scroll { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-  .calendar { flex: 1; min-width: 0; grid-template-columns: 34px repeat(12, minmax(0, 1fr)); grid-template-rows: auto repeat(24, minmax(0, 1fr)); gap: 2px; }
-  .cell { height: auto; min-height: 0; font-size: 10px; border-radius: 3px; }
-  .calendar .yr { font-size: 11px; }
-  .detail { overflow: auto; }
-  .chart { min-height: 0; }
-  .map { min-height: 0; }
-  .map { cursor: default; }
-  .leaflet-control-attribution { font-size: 9px; }
-  .foot { padding-bottom: 8px; align-items: center; }
-}
-@media (min-width: 1000px) and (min-height: 600px) and (max-height: 800px) {
-  .steps { padding: 4px 20px; font-size: 12.5px; }
-  .top { padding: 6px 20px; }
-  .answer strong { font-size: 18px; }
-  .card { padding: 10px 12px; }
-  .kv { padding: 5px 8px; }
-  .kv b { font-size: 17px; }
-  .kv em { display: none; }
-  .compare { margin-top: 4px; }
-  .bar-row { margin: 2px 0; font-size: 12px; }
-  .series-key, .table-view { display: none; }
-  .legend { margin-top: 4px; font-size: 11px; }
-}
-@media (min-width: 1000px) and (min-height: 1000px) {
-  body { font-size: 16px; }
-  h2 { font-size: 18px; }
-  .cell { font-size: clamp(11px, 1.1vh, 14px); }
-  .calendar .yr, .calendar .hd { font-size: 13px; }
-  .kv b { font-size: 26px; }
-  .bar-row { font-size: 15px; margin: 8px 0; }
-  .chart .axis text { font-size: 13px; }
-}
+/* one-screen mode (html.fit set by the inline script) */
+html.fit, html.fit body { height: 100%; }
+html.fit body { display: flex; flex-direction: column; overflow: hidden; }
+html.fit .top,html.fit .steps,html.fit .foot { flex: none; }
+html.fit .dash { flex: 1; min-height: 0; width: 100%; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); padding-bottom: 8px; }
+html.fit .dash > .card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+html.fit .cal-scroll { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+html.fit .calendar { flex: 1; min-width: 0; grid-template-columns: 34px repeat(12, minmax(0, 1fr)); grid-template-rows: auto repeat(24, minmax(0, 1fr)); gap: 2px; }
+html.fit .cell { height: auto; min-height: 0; font-size: 10px; border-radius: 3px; }
+html.fit .calendar .yr { font-size: 11px; }
+html.fit .detail { overflow: auto; }
+html.fit .chart { min-height: 0; }
+html.fit .map { min-height: 0; }
+html.fit .map { cursor: default; }
+html.fit .leaflet-control-attribution { font-size: 9px; }
+html.fit .foot { padding-bottom: 8px; align-items: center; }
+
+
+
 @media (max-width: 1500px) {
-  .answer { font-size: 15px; }
-  .answer strong { font-size: 18px; }
+  html:not(.fit) .answer { font-size: 15px; }
+  html:not(.fit) .answer strong { font-size: 18px; }
 }
 
 /* year and month pickers with 12 month tiles */
@@ -274,18 +254,12 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
 .legend .ticks span:first-child { transform: none; }
 .legend .ticks span:last-child { transform: translateX(-100%); }
 .cal-scroll { overflow: visible; }
-@media (min-width: 1000px) and (min-height: 600px) {
-  .cal-scroll { display: flex; overflow: visible; }
-  .months { grid-auto-rows: minmax(0, 1fr); grid-template-rows: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 1000px) and (min-height: 600px) and (max-height: 800px) {
-  .tile .tv { font-size: 19px; }
-  .tile { padding: 6px 8px; }
-}
-@media (min-width: 1000px) and (min-height: 1000px) {
-  .tile .tv { font-size: 30px; }
-  .tile .mn { font-size: 15px; }
-}
+/* one-screen mode (html.fit set by the inline script) */
+html.fit .cal-scroll { display: flex; overflow: visible; }
+html.fit .months { grid-auto-rows: minmax(0, 1fr); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+
+
+
 @media (max-width: 700px) {
   .months { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
@@ -303,3 +277,6 @@ th { position: sticky; top: 0; background: var(--surface); font-weight: 500; }
 .months.weeks .tile .mn { white-space: nowrap; }
 .months .empty-cal { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; padding: 16px; border-radius: 10px; background: var(--raised); color: var(--text-2); font-size: 14px; }
 .months .empty-cal button { font: inherit; font-weight: 700; padding: 6px 12px; min-height: 38px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+
+/* scale the reference layout (about 1600 x 840) to every wide screen */
+html.fit body { zoom: var(--z, 1); width: calc(100vw / var(--z, 1)); height: calc(100dvh / var(--z, 1)); }

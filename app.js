@@ -267,8 +267,8 @@
       tip.hidden = false;
       tip.innerHTML = "<b>" + (weekly ? spanLabel(r) : label(r.start, true)) + " · " + AREA + "</b>" +
         "<span><em>Observed MODIS</em>" + fmt(r.modis) + "</span><span><em>Observed VIIRS (S-NPP)</em>" + fmt(r.snpp) + "</span><span><em>MODIS on VIIRS scale</em>" + fmt(r.est, 2) + "</span>";
-      const bx = box.getBoundingClientRect(), sx = (x(i) / W) * bx.width;
-      tip.style.left = (sx + 230 > bx.width ? sx - 236 : sx + 14) + "px";
+      const bw = box.clientWidth, sx = (x(i) / W) * bw;
+      tip.style.left = (sx + 230 > bw ? sx - 236 : sx + 14) + "px";
       tip.style.top = (box.offsetTop + 8) + "px";
     });
     hit.addEventListener("pointerleave", () => { hl.setAttribute("visibility", "hidden"); tip.hidden = true; });
@@ -354,7 +354,9 @@
       c.addEventListener("end", () => { clearTimeout(back); back = setTimeout(() => globe.pointOfView(target, 1200), 3000); });
       if (calm) globe.pointOfView(target, 0);
       else { globe.pointOfView({ lat: 5, lng: -30, altitude: 2.6 }, 0); setTimeout(() => globe.pointOfView(target, 2200), 300); }
-      if (window.ResizeObserver) new ResizeObserver(() => globe.width(el.clientWidth).height(el.clientHeight)).observe(el);
+      const sharp = () => { const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--z")) || 1; globe.renderer().setPixelRatio(Math.min(3, (devicePixelRatio || 1) * Math.max(1, z))); };
+      sharp();
+      if (window.ResizeObserver) new ResizeObserver(() => { sharp(); globe.width(el.clientWidth).height(el.clientHeight); }).observe(el);
       el.classList.add("is-globe");
       return true;
     } catch (e) {

@@ -14,6 +14,15 @@
 <link rel="stylesheet" href="styles.css">
 <script>
   try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  (function () {
+    var d = document.documentElement;
+    function fit() {
+      var w = innerWidth, h = innerHeight, on = w >= 1000 && w / h >= 1.15;
+      d.classList.toggle("fit", on);
+      d.style.setProperty("--z", on ? Math.min(w / 1600, h / 840).toFixed(4) : "1");
+    }
+    fit(); addEventListener("resize", fit);
+  })();
 </script>
 </head>
 <body>
