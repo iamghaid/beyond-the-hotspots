@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beyond the Hotspots · Pantanal burning activity calendar</title>
+<meta name="description" content="Monthly satellite burning activity for the Pantanal study area, 2012–2018, with VIIRS observations and harmonized MODIS estimates.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="styles.css">
+<script>
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<a class="skip" href="#calendar-section">Skip to calendar</a>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>Beyond the Hotspots</h1>
+      <p class="sub">Pantanal burning activity calendar · <span id="span-label">February 2012 – January 2018</span></p>
+    </div>
+    <button id="theme-toggle" class="ghost" type="button" aria-label="Switch color theme">Dark mode</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="answer" aria-labelledby="answer-title">
+    <h2 id="answer-title" class="answer-q">Can older MODIS records tell the same story as VIIRS?</h2>
+    <p class="answer-a">After harmonization, MODIS monthly error against VIIRS fell from <strong>46.1%</strong> to <strong>4.7%</strong> in the two years held out from calibration.</p>
+    <p class="note">Error is total absolute monthly difference divided by total observed VIIRS activity. Performance varies within the study area.</p>
+  </section>
+
+  <section id="calendar-section" class="card" aria-labelledby="cal-title">
+    <div class="card-head">
+      <h2 id="cal-title">Monthly activity</h2>
+      <div class="seg" role="radiogroup" aria-label="Data source">
+        <button role="radio" aria-checked="true" data-src="viirs">VIIRS observed</button>
+        <button role="radio" aria-checked="false" data-src="modis">MODIS raw</button>
+        <button role="radio" aria-checked="false" data-src="modis_cal">MODIS harmonized</button>
+      </div>
+    </div>
+    <p class="note" id="src-note">Observed Suomi NPP VIIRS active cell-days.</p>
+    <p class="note mobile-only">Swipe sideways to see every month.</p>
+    <div class="cal-scroll"><div id="calendar" class="calendar" role="grid" aria-label="Burning activity by month"></div></div>
+    <div class="legend" aria-hidden="true">
+      <span>Active cell-days</span>
+      <span class="key"><i style="background:var(--fire-1)"></i>&lt;50</span>
+      <span class="key"><i style="background:var(--fire-2)"></i>50–149</span>
+      <span class="key"><i style="background:var(--fire-3)"></i>150–399</span>
+      <span class="key"><i style="background:var(--fire-4)"></i>400–999</span>
+      <span class="key"><i style="background:var(--fire-5)"></i>1,000+</span>
+      <span class="key"><i class="hatch"></i>No data</span>
+      <span class="key"><b class="flag-key">▲</b>Above usual</span>
+    </div>
+  </section>
+
+  <section id="detail" class="card detail" aria-live="polite" aria-labelledby="detail-title"></section>
+
+  <section class="card" aria-labelledby="chart-title">
+    <div class="card-head">
+      <h2 id="chart-title">Three sources over time</h2>
+      <div class="range">
+        <label>From <select id="from"></select></label>
+        <label>To <select id="to"></select></label>
+      </div>
+    </div>
+    <div class="series-key" aria-hidden="true">
+      <span><i class="ln viirs"></i>VIIRS observed</span>
+      <span><i class="ln modis"></i>MODIS raw</span>
+      <span><i class="ln cal"></i>MODIS harmonized (estimate)</span>
+    </div>
+    <div id="chart" class="chart"></div>
+    <div id="tip" class="tip" role="status" hidden></div>
+    <details class="table-view">
+      <summary>Show as table</summary>
+      <div class="table-scroll"><table id="table"></table></div>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="agree-title">
+    <h2 id="agree-title">Which months look unusual? 2017 test year</h2>
+    <p class="note">Each method's call compared with VIIRS. A month is above usual when it passes the 75th percentile of the same month in the five prior years.</p>
+    <div id="agreement" class="agreement"></div>
+  </section>
+
+  <div class="two">
+    <section class="card" aria-labelledby="map-title">
+      <h2 id="map-title">Pantanal study area</h2>
+      <div id="map" class="map" role="img" aria-label="Map of the Pantanal study area rectangle, 58 to 56 degrees west, 19.5 to 17 degrees south"></div>
+      <p class="note">Bounds: 58°W–56°W, 19.5°S–17°S. Values cover the whole rectangle.</p>
+    </section>
+
+    <section class="card" aria-labelledby="dl-title">
+      <h2 id="dl-title">Download</h2>
+      <p>Monthly rows for <strong id="dl-range"></strong>, with activity, median, coverage and source.</p>
+      <button id="download" class="primary" type="button">Download CSV</button>
+      <h3>About the data</h3>
+      <ul class="facts">
+        <li><b>Active cell-day:</b> a 2 km grid cell with at least one qualifying detection on one local day. It counts burning activity, not individual fires.</li>
+        <li><b>Harmonized MODIS:</b> combined Terra and Aqua cell-days × <span id="factor">1.84</span>, an estimate on the VIIRS scale.</li>
+        <li><b>Qualifying detections:</b> vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS confidence nominal or high.</li>
+        <li><b>Status:</b> observation coverage unverified; VIIRS hotspot type provisional.</li>
+        <li><b>Local time:</b> America/Cuiaba.</li>
+      </ul>
+      <p class="note">Source: <a href="https://firms.modaps.eosdis.nasa.gov/download/">NASA FIRMS archive</a>.</p>
+    </section>
+  </div>
+</main>
+
+<footer class="wrap foot">
+  <p>NASA Space Apps Challenge 2026 · The Kernel team</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>
