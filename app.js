@@ -8,19 +8,19 @@
   const SERIES = {
     modis: { label: "Observed MODIS (Terra + Aqua)", short: "MODIS", dec: 0 },
     snpp: { label: "Observed VIIRS (S-NPP)", short: "VIIRS", dec: 0 },
-    est: { label: "Harmonized MODIS (× 1.84, VIIRS scale)", short: "Harmonized MODIS", dec: 2 }
+    est: { label: "Harmonized MODIS (FRP ensemble, VIIRS scale)", short: "Harmonized MODIS", dec: 2 }
   };
   const VIEWS = {
-    default: "Observed MODIS until January 2012, then harmonized MODIS (× 1.84, on the VIIRS scale).",
+    default: "Observed MODIS until January 2012, then harmonized MODIS (FRP ensemble, on the VIIRS scale).",
     modis: "Observed MODIS for every month: one consistent measurement across both eras.",
     snpp: "Observed VIIRS (S-NPP). Available from February 2012.",
-    est: "Harmonized MODIS: MODIS × 1.84, on the VIIRS scale. Available from February 2012."
+    est: "Harmonized MODIS: an ensemble of the 1.84× factor and a fire-intensity (FRP) calibration, on the VIIRS scale. Available from February 2012."
   };
   const WEEK_VIEWS = {
     default: "Weeks run Monday to Sunday, cut at the February season start. Shown: harmonized MODIS.",
     modis: "Observed MODIS for each week, from February 2012.",
     snpp: "Observed VIIRS (S-NPP) for each week, from February 2012.",
-    est: "Harmonized MODIS (MODIS × 1.84) for each full week. Partial weeks and weeks with no MODIS activity are not harmonized."
+    est: "Harmonized MODIS (FRP ensemble) for each full week. Partial weeks are not harmonized."
   };
   const SCALE_MAX = 8000;
   const RAMPS = {
@@ -148,7 +148,7 @@
       (v == null ? '<span class="bar-na">Unavailable</span>' : '<div class="bar ' + cls + '" style="width:' + (100 * v / max).toFixed(1) + '%"></div>') +
       '</div><span class="n">' + fmt(v, d) + "</span></div>";
     const kv = (name, v, d, hint) => '<div class="kv' + (v == null ? " muted" : "") + '"><small>' + name + "</small><b>" + fmt(v, d) + "</b>" + (hint ? "<em>" + hint + "</em>" : "") + "</div>";
-    const estHint = wk ? (wk.partial ? "not harmonized: " + wk.days + "-day week" : r.est == null ? "not harmonized: no MODIS activity" : "MODIS × 1.84") : (paired ? "MODIS × 1.84" : "Before Feb 2012");
+    const estHint = wk ? (wk.partial ? "not harmonized: " + wk.days + "-day week" : r.est == null ? "not harmonized" : "FRP ensemble") : (paired ? "FRP ensemble" : "Before Feb 2012");
     $("detail").innerHTML =
       '<h2 id="detail-title">' + (wk ? shortSpan(wk) + ", " + split(wk.end).y : label(k, true)) + ' · ' + AREA + "</h2>" +
       '<p class="note">' + (wk ? "Week of " + spanLabel(wk) : MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y) + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
@@ -173,12 +173,12 @@
     if (!res.ok) throw new Error(res.status);
     const raw = await res.json();
     let d = new Date(raw.first + "T00:00:00Z");
-    state.weeks = raw.rows.map(([days, modis, snpp]) => {
+    state.weeks = raw.rows.map(([days, modis, snpp, est]) => {
       const start = iso(d), endD = new Date(d.getTime() + (days - 1) * 864e5), end = iso(endD);
       d = new Date(endD.getTime() + 864e5);
       const { y, m } = split(start);
       const partial = days < 7;
-      return { start, end, days, partial, season: y - (m === 1 ? 1 : 0), modis, snpp, est: partial || modis === 0 ? null : Math.round(modis * raw.factor * 100) / 100 };
+      return { start, end, days, partial, season: y - (m === 1 ? 1 : 0), modis, snpp, est: partial || est == null ? null : est };
     });
     state.weeks.forEach((w, i) => { state.weekIdx[w.start] = i; });
     return state.weeks;
@@ -397,9 +397,9 @@
   }
   function downloadWeeks() {
     const meta = state.meta;
-    const cols = ["week_start_local", "week_end_local", "days", "is_partial_week", "season", "study_area", "observed_modis_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "coverage_status", "viirs_type_status", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
+    const cols = ["week_start_local", "week_end_local", "days", "is_partial_week", "season", "study_area", "observed_modis_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "coverage_status", "viirs_type_status", "timezone", "grid_crs", "cell_size_m", "method_version", "calibration_model_status", "source"];
     const lines = [cols.join(",")];
-    for (const w of weekRows()) lines.push([w.start, w.end, w.days, w.partial ? "True" : "False", seasonLabel(w.season), AREA, w.modis, w.snpp, w.est ?? "", meta.coverage_status, meta.viirs_type_status_paired, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"].join(","));
+    for (const w of weekRows()) lines.push([w.start, w.end, w.days, w.partial ? "True" : "False", seasonLabel(w.season), AREA, w.modis, w.snpp, w.est ?? "", meta.coverage_status, meta.viirs_type_status_paired, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.calibration_model_status, "NASA FIRMS active fire archive"].join(","));
     saveCsv(lines, "pantanal_weekly_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv");
   }
   function saveCsv(lines, name) {
@@ -412,13 +412,13 @@
   function download() {
     if (state.grain === "week") return downloadWeeks();
     const meta = state.meta;
-    const cols = ["month_id", "period_start_local", "period_end_local", "season", "study_area", "observed_modis_cell_days", "aqua_cell_days", "terra_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "calendar_view_value", "calendar_view_series", "coverage_status", "viirs_type_status", "modis_versions", "timezone", "grid_crs", "cell_size_m", "method_version", "modis_to_snpp_factor", "source"];
+    const cols = ["month_id", "period_start_local", "period_end_local", "season", "study_area", "observed_modis_cell_days", "aqua_cell_days", "terra_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "calendar_view_value", "calendar_view_series", "coverage_status", "viirs_type_status", "modis_versions", "timezone", "grid_crs", "cell_size_m", "method_version", "calibration_model_status", "source"];
     const lines = [cols.join(",")];
     for (const r of rangeRows()) {
       const paired = r.display === "est";
       const vals = [r.start, r.start + "-01", r.start + "-" + lastDay(r.start), seasonLabel(r.season), AREA, r.modis, r.aqua, r.terra, r.snpp ?? "", r.est ?? "", r[r.display],
-        paired ? "Harmonized MODIS (VIIRS scale)" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
-        meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.modis_to_snpp_factor, "NASA FIRMS active fire archive"];
+        paired ? "Harmonized MODIS (FRP ensemble, VIIRS scale)" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
+        meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, paired ? meta.calibration_model_status : "", "NASA FIRMS active fire archive"];
       lines.push(vals.map((v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(","));
     }
     const a = document.createElement("a");

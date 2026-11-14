@@ -33,7 +33,7 @@
     <h1>Beyond the Hotspots</h1>
     <p class="sub">Pantanal burning activity calendar · <span id="span-label">February 2003 – January 2026</span></p>
   </div>
-  <p class="answer">MODIS error vs observed VIIRS after harmonization: <strong>44.48%</strong> → <strong>11.51%</strong> <span class="note">across 120 months held out from fitting (10 seasons)</span></p>
+  <p class="answer">MODIS error vs observed VIIRS after harmonization: <strong>44.48%</strong> → <strong>9.94%</strong> <span class="note">across 120 months outside model fitting (10 seasons)</span></p>
   <div class="actions">
     <button id="download" class="primary" type="button">Download CSV</button>
     <button id="theme-toggle" class="ghost" type="button" aria-label="Switch color theme">Dark mode</button>
@@ -65,7 +65,7 @@
         <button role="radio" aria-checked="true" data-src="default">Calendar view</button>
         <button role="radio" aria-checked="false" data-src="modis" title="Observed MODIS (Terra + Aqua)">MODIS</button>
         <button role="radio" aria-checked="false" data-src="snpp" title="Observed VIIRS (S-NPP)">VIIRS</button>
-        <button role="radio" aria-checked="false" data-src="est" title="Harmonized MODIS: MODIS × 1.84, on the VIIRS scale">Harmonized MODIS</button>
+        <button role="radio" aria-checked="false" data-src="est" title="Harmonized MODIS: FRP ensemble, on the VIIRS scale">Harmonized MODIS</button>
       </div>
     </div>
     <p class="note" id="src-note"></p>
@@ -92,7 +92,7 @@
     <div class="series-key" aria-hidden="true">
       <span><i class="ln modis"></i>Observed MODIS (Terra + Aqua)</span>
       <span><i class="ln snpp"></i>Observed VIIRS (S-NPP)</span>
-      <span><i class="ln est"></i>Harmonized MODIS (× 1.84, VIIRS scale)</span>
+      <span><i class="ln est"></i>Harmonized MODIS (FRP ensemble, VIIRS scale)</span>
     </div>
     <div id="chart" class="chart"></div>
     <div id="tip" class="tip" role="status" hidden></div>
@@ -110,10 +110,12 @@
       <summary>Methods and results</summary>
       <div class="pop-body">
         <h3>How harmonized MODIS works</h3>
-        <p>Combined Terra and Aqua MODIS activity × <b>1.84</b>, fitted against observed VIIRS (S-NPP) on full weeks from 2013–2014 to 2016–2017.</p>
+        <p>We count qualifying MODIS Aqua and Terra detections as unique active cell-days on a shared 2 km grid. The estimate averages the original 1.84× calibration with a calibration based on three MODIS fire-radiative-power bands (under 10, 10–50 and over 50 MW). Coefficients were fitted on February 2013 – January 2017 and compared with observed VIIRS (S-NPP) in the other periods.</p>
         <ul class="facts">
-          <li><b>120 held-out months, 10 seasons:</b> weighted absolute error 44.48% → 11.51%.</li>
-          <li><b>8 later seasons, 2018–2026:</b> 44.18% → 12.75% across 96 months.</li>
+          <li><b>120 months outside fitting, 10 seasons:</b> weighted absolute error 44.48% raw → 11.51% with 1.84× → <b>9.94%</b> with the FRP ensemble.</li>
+          <li><b>8 later seasons, Feb 2018 – Jan 2026:</b> 12.75% with 1.84× → <b>10.79%</b> across 96 months.</li>
+          <li><b>Why fire intensity:</b> VIIRS detects small, weak fires that MODIS misses. When fires are intense, both sensors see them, so a single factor overestimates the largest fire months.</li>
+          <li>These numbers measure retrospective agreement between sensors, not ground-truth fire accuracy. The test periods were inspected during model development, so they are not a fresh independent test.</li>
           <li>Weighted absolute error = sum of absolute differences ÷ total observed VIIRS activity, for the fixed rectangle.</li>
           <li>Agreement is weaker in quiet weeks, at night, and with MODIS version 61.03. Coverage, fires on the ground and subarea performance are unverified.</li>
         </ul>
@@ -129,7 +131,7 @@
         <ul class="facts">
           <li><b>Active cell-day:</b> a 2 × 2 km equal-area cell with one or more qualifying detections on one local day. It counts detected burning activity, not individual fires, burned area or risk.</li>
           <li><b>Qualifying detections:</b> inferred vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS nominal or high confidence. Local dates in America/Cuiaba.</li>
-          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed VIIRS (S-NPP) and harmonized MODIS (× 1.84, VIIRS scale).</li>
+          <li><b>Eras:</b> February 2003 – January 2012 observed MODIS only. From February 2012, observed MODIS, observed VIIRS (S-NPP) and harmonized MODIS (FRP ensemble, VIIRS scale).</li>
           <li><b>Status:</b> satellite coverage unverified throughout. VIIRS hotspot typing is provisional. MODIS versions 6.03 and 61.03.</li>
           <li><b>Download:</b> <span id="dl-range"></span>.</li>
         </ul>
