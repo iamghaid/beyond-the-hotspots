@@ -16,6 +16,12 @@
     snpp: "Observed VIIRS (S-NPP). Available from February 2012.",
     est: "MODIS × 1.84, estimated on the VIIRS scale. Available from February 2012."
   };
+  const WEEK_VIEWS = {
+    default: "Weeks run Monday to Sunday, cut at the February season start. Shown: MODIS estimated on the VIIRS scale.",
+    modis: "Observed MODIS for each week, from February 2012.",
+    snpp: "Observed VIIRS (S-NPP) for each week, from February 2012.",
+    est: "MODIS × 1.84 for each full week. Partial weeks and weeks with no MODIS activity have no estimate."
+  };
   const SCALE_MAX = 8000;
   const RAMPS = {
     light: ["#FBEBD3", "#F7C98C", "#EE9446", "#CF5A23", "#8F2A14"],
@@ -43,7 +49,7 @@
     return { bg: "rgb(" + rgb.map(toSrgb).join(",") + ")", ink: lum > 0.28 ? "#13202E" : "#FFFFFF" };
   }
 
-  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", weeks: null };
+  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", weeks: null, weekIdx: {}, selWeek: null };
   const $ = (id) => document.getElementById(id);
   const fmt = (v, d = 0) => v == null ? "Unavailable" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: d });
   const split = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
@@ -58,8 +64,37 @@
   const shift = (k, n) => { const { y, m } = split(k); const t = y * 12 + (m - 1) + n; return Math.floor(t / 12) + "-" + String((t % 12) + 1).padStart(2, "0"); };
 
   // ---------- calendar ----------
-  function drawCalendar() {
+  function weeksOfMonth(k) { return (state.weeks || []).filter((w) => w.start.slice(0, 7) === k || w.end.slice(0, 7) === k); }
+  function weekValue(w, view) { return view === "default" ? w.est : w[view]; }
+  function drawWeekCalendar() {
     const cal = $("calendar");
+    cal.classList.add("weeks");
+    const { y, m } = split(state.sel);
+    const list = weeksOfMonth(state.sel);
+    let h = "";
+    if (!list.length) {
+      h = '<div class="empty-cal"><span>Weekly data start in February 2012. ' + MONTHS_LONG[m - 1] + " " + y + " has monthly data only.</span>" +
+        '<button type="button" data-go="2012-02">Go to February 2012</button></div>';
+    } else {
+      for (const w of list) {
+        const v = weekValue(w, state.view), dec = state.view === "est" || state.view === "default" ? 2 : 0;
+        const sel = w.start === state.selWeek;
+        const name = shortSpan(w);
+        const common = ' role="gridcell" data-w="' + w.start + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
+        const tag = w.partial ? '<span class="chip" title="Partial week at the season boundary">' + w.days + " days</span>" : "";
+        if (v == null) h += '<button class="tile unavail"' + common + ' aria-label="' + spanLabel(w) + ': unavailable"><span class="mn">' + name + '</span><span class="tv">Unavailable</span>' + tag + "</button>";
+        else { const col = colorFor(v); h += '<button class="tile"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" aria-label="' + spanLabel(w) + ": " + fmt(v, dec) + ' active cell-days"><span class="mn">' + name + '</span><span class="tv">' + fmt(v, dec) + '</span><span class="tu">cell-days</span>' + tag + "</button>"; }
+      }
+    }
+    cal.innerHTML = h;
+    $("year").value = y; $("month").value = m;
+    $("src-note").textContent = WEEK_VIEWS[state.view];
+    drawLegend();
+  }
+  function drawCalendar() {
+    if (state.grain === "week") return drawWeekCalendar();
+    const cal = $("calendar");
+    cal.classList.remove("weeks");
     const y = split(state.sel).y;
     let h = "";
     for (let m = 1; m <= 12; m++) {
@@ -96,14 +131,16 @@
     const ticks = [0, 10, 100, 1000, SCALE_MAX];
     const pos = (v) => (100 * Math.log10(1 + v) / Math.log10(1 + SCALE_MAX)).toFixed(1) + "%";
     const grad = Array.from({ length: 11 }, (_, i) => colorFor(Math.pow(1 + SCALE_MAX, i / 10) - 1).bg).join(",");
-    const head = state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the VIIRS scale" : "Active cell-days";
+    const head = state.grain === "week" ? "Weekly active cell-days" : state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: estimate on the VIIRS scale" : "Active cell-days";
     $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="ramp" style="background:linear-gradient(90deg,' + grad + ')"></div><div class="ticks">' +
-      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span><span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>';
+      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span>' + (state.grain === "week" ? '<span class="key"><b class="chip-key">5 days</b>partial week at the season start</span>' : '<span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>');
   }
 
   // ---------- month detail ----------
   function drawDetail() {
-    const r = state.byKey[state.sel];
+    const wk = state.grain === "week" && state.selWeek ? state.weeks[state.weekIdx[state.selWeek]] : null;
+    if (state.grain === "week" && !wk) { $("detail").innerHTML = '<h2 id="detail-title">' + label(state.sel, true) + " · " + AREA + '</h2><p class="note">No weekly data before February 2012. Switch to Monthly to see this month.</p>'; return; }
+    const r = wk ? Object.assign({}, wk, { display: "est", versions: (state.byKey[wk.start.slice(0, 7)] || {}).versions || "" }) : state.byKey[state.sel];
     const k = r.start, { y, m } = split(k);
     const paired = r.display === "est";
     const max = Math.max(r.modis || 0, r.snpp || 0, r.est || 0) || 1;
@@ -111,17 +148,18 @@
       (v == null ? '<span class="bar-na">Unavailable</span>' : '<div class="bar ' + cls + '" style="width:' + (100 * v / max).toFixed(1) + '%"></div>') +
       '</div><span class="n">' + fmt(v, d) + "</span></div>";
     const kv = (name, v, d, hint) => '<div class="kv' + (v == null ? " muted" : "") + '"><small>' + name + "</small><b>" + fmt(v, d) + "</b>" + (hint ? "<em>" + hint + "</em>" : "") + "</div>";
+    const estHint = wk ? (wk.partial ? "no estimate for a " + wk.days + "-day week" : r.est == null ? "no estimate: no MODIS activity" : "estimate, × 1.84") : (paired ? "estimate, × 1.84" : "Before Feb 2012");
     $("detail").innerHTML =
-      '<h2 id="detail-title">' + label(k, true) + ' · ' + AREA + "</h2>" +
-      '<p class="note">' + MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
+      '<h2 id="detail-title">' + (wk ? shortSpan(wk) + ", " + split(wk.end).y : label(k, true)) + ' · ' + AREA + "</h2>" +
+      '<p class="note">' + (wk ? "Week of " + spanLabel(wk) : MONTHS[m - 1] + " 1–" + lastDay(k) + ", " + y) + " · season " + seasonLabel(r.season) + " · active cell-days (2 × 2 km)</p>" +
       '<div class="kvs">' +
       kv("Observed MODIS", r.modis, 0, "Terra + Aqua") +
       kv("Observed VIIRS", r.snpp, 0, paired ? "S-NPP · 375 m pixels" : "Before Feb 2012") +
-      kv("MODIS on VIIRS scale", r.est, 2, paired ? "estimate, × 1.84" : "Before Feb 2012") +
+      kv("MODIS on VIIRS scale", r.est, 2, estHint) +
       "</div>" +
       '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed VIIRS", "snpp", r.snpp, 0) + bar("MODIS on VIIRS scale", "est", r.est, 2) + "</div>" +
-      '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · VIIRS hotspot type provisional" : "") + " · MODIS v" + r.versions.replace("|", " and v") + "</p>";
-    const mapText = AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
+      '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · VIIRS hotspot type provisional" : "") + (r.versions ? " · MODIS v" + r.versions.replace("|", " and v") : "") + "</p>";
+    const mapText = wk ? AREA + " · " + shortSpan(wk) + ", " + split(wk.end).y + ": " + fmt(weekValue(wk, state.view), state.view === "est" || state.view === "default" ? 2 : 0) : AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
     lastMapText = mapText;
     if (globeLabel) globeLabel.textContent = mapText;
     if (mapLabel) mapLabel.setTooltipContent(mapText);
@@ -142,22 +180,41 @@
       const partial = days < 7;
       return { start, end, days, partial, season: y - (m === 1 ? 1 : 0), modis, snpp, est: partial || modis === 0 ? null : Math.round(modis * raw.factor * 100) / 100 };
     });
+    state.weeks.forEach((w, i) => { state.weekIdx[w.start] = i; });
     return state.weeks;
   }
   const weekRows = () => (state.weeks || []).filter(inRange);
+  function shortSpan(w) {
+    const a = split(w.start), b = split(w.end), da = +w.start.slice(8), db = +w.end.slice(8);
+    return MONTHS[a.m - 1] + " " + da + (w.days === 1 ? "" : "–" + (a.m === b.m ? "" : MONTHS[b.m - 1] + " ") + db);
+  }
   function spanLabel(w) {
     const a = split(w.start), b = split(w.end), da = +w.start.slice(8), db = +w.end.slice(8);
     const left = MONTHS[a.m - 1] + " " + da, right = (a.m === b.m ? "" : MONTHS[b.m - 1] + " ") + db;
     return left + "–" + right + ", " + b.y + (w.partial ? " · partial week (" + w.days + " days)" : "");
   }
   async function setGrain(g) {
-    document.querySelectorAll(".grain button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.grain === g)));
-    $("grain-note").hidden = g !== "week";
     if (g === "week") {
       try { await loadWeeks(); }
-      catch (e) { $("chart").innerHTML = '<p class="empty">Weekly data didn\'t load. Refresh the page and try again.</p>'; state.grain = "month"; return; }
+      catch (e) { $("src-note").textContent = "Weekly data didn't load. Refresh the page and try again."; return; }
     }
-    state.grain = g; drawChart(); drawTable();
+    document.querySelectorAll(".grain button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.grain === g)));
+    state.grain = g;
+    $("chart-title").textContent = g === "week" ? "Three series over time · weekly" : "Three series over time";
+    if (g === "week") pickWeek();
+    drawCalendar(); drawDetail(); drawChart(); drawTable();
+  }
+  function pickWeek() {
+    const list = weeksOfMonth(state.sel);
+    if (!list.some((w) => w.start === state.selWeek)) state.selWeek = list.length ? list[0].start : null;
+  }
+  function selectWeek(start, focus) {
+    const w = state.weeks[state.weekIdx[start]];
+    if (!w) return;
+    state.selWeek = start;
+    if (w.start.slice(0, 7) !== state.sel && w.end.slice(0, 7) !== state.sel) state.sel = start.slice(0, 7);
+    drawCalendar(); drawDetail(); drawChart();
+    if (focus) document.querySelector('.tile[data-w="' + start + '"]')?.focus();
   }
 
   // ---------- chart ----------
@@ -189,7 +246,7 @@
     const trans = ti >= 0 ? '<line x1="' + x(ti) + '" x2="' + x(ti) + '" y1="' + m.t + '" y2="' + (m.t + ih) + '" stroke="' + c("--text-2") + '" stroke-width="1.5"/><text class="t-label" x="' + (x(ti) + 5) + '" y="' + (m.t + 12) + '">VIIRS starts</text>' : "";
     let selLine = "";
     if (weekly) {
-      const hits = rows.map((r, i) => (r.start.slice(0, 7) === state.sel || r.end.slice(0, 7) === state.sel) ? i : -1).filter((i) => i >= 0);
+      const hits = rows.map((r, i) => r.start === state.selWeek ? i : -1).filter((i) => i >= 0);
       if (hits.length) { const x0 = x(hits[0]) - 2, x1 = x(hits[hits.length - 1]) + 2; selLine = '<rect x="' + x0 + '" y="' + m.t + '" width="' + Math.max(3, x1 - x0) + '" height="' + ih + '" fill="' + c("--text") + '" opacity=".12"/>'; }
     } else {
       const si = rows.findIndex((r) => r.start === state.sel);
@@ -377,7 +434,9 @@
       if (!near) return;
       k = near.start;
     }
-    state.sel = k; drawCalendar(); drawDetail(); drawChart();
+    state.sel = k;
+    if (state.grain === "week") pickWeek();
+    drawCalendar(); drawDetail(); drawChart();
     if (focus) document.querySelector('.tile[data-k="' + k + '"]')?.focus();
   }
   function setView(v) {
@@ -427,11 +486,21 @@
     const pick = () => select($("year").value + "-" + String($("month").value).padStart(2, "0"));
     $("year").addEventListener("change", pick); $("month").addEventListener("change", pick);
     const cal = $("calendar");
-    cal.addEventListener("click", (e) => { const b = e.target.closest("button.tile"); if (b) select(b.dataset.k, true); });
+    cal.addEventListener("click", (e) => {
+      const go = e.target.closest("button[data-go]"); if (go) return select(go.dataset.go);
+      const b = e.target.closest("button.tile"); if (!b) return;
+      if (b.dataset.w) selectWeek(b.dataset.w, true); else select(b.dataset.k, true);
+    });
     cal.addEventListener("keydown", (e) => {
       const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -4, ArrowDown: 4, Home: -999, End: 999 };
       if (!(e.key in moves)) return;
       e.preventDefault();
+      if (state.grain === "week") {
+        if (!state.selWeek) return;
+        const n = state.weeks.length, step = Math.abs(moves[e.key]) === 999 ? moves[e.key] : moves[e.key] === -4 || moves[e.key] === 4 ? moves[e.key] / 4 * 3 : moves[e.key];
+        const j = Math.max(0, Math.min(n - 1, state.weekIdx[state.selWeek] + step));
+        return selectWeek(state.weeks[j].start, true);
+      }
       let k = shift(state.sel, moves[e.key]);
       if (!state.byKey[k]) k = moves[e.key] < 0 ? first : last;
       select(k, true);

@@ -41,7 +41,11 @@
 
   <section class="card cal-card" aria-labelledby="cal-title">
     <div class="card-head">
-      <h2 id="cal-title">Monthly activity</h2>
+      <h2 id="cal-title" class="sr-only">Activity calendar</h2>
+      <div class="seg grain" role="radiogroup" aria-label="Time step">
+        <button role="radio" aria-checked="true" data-grain="month">Monthly</button>
+        <button role="radio" aria-checked="false" data-grain="week">Weekly</button>
+      </div>
       <div class="pickers">
         <label>Year <select id="year" aria-label="Year"></select></label>
         <label>Month <select id="month" aria-label="Month"></select></label>
@@ -56,7 +60,7 @@
       </div>
     </div>
     <p class="note" id="src-note"></p>
-    <div class="cal-scroll"><div id="calendar" class="months" role="grid" aria-label="Active cell-days for each month of the selected year. Use arrow keys to move between months." tabindex="-1"></div></div>
+    <div class="cal-scroll"><div id="calendar" class="months" role="grid" aria-label="Active cell-days for the selected period. Use arrow keys to move between tiles." tabindex="-1"></div></div>
     <div class="legend" id="legend" aria-hidden="true"></div>
   </section>
 
@@ -71,10 +75,6 @@
   <section class="card chart-card" aria-labelledby="chart-title">
     <div class="card-head">
       <h2 id="chart-title">Three series over time</h2>
-      <div class="seg grain" role="radiogroup" aria-label="Time step">
-        <button role="radio" aria-checked="true" data-grain="month">Monthly</button>
-        <button role="radio" aria-checked="false" data-grain="week">Weekly</button>
-      </div>
       <div class="range">
         <label>From season <select id="from"></select></label>
         <label>to <select id="to"></select></label>
@@ -85,7 +85,6 @@
       <span><i class="ln snpp"></i>Observed VIIRS (S-NPP)</span>
       <span><i class="ln est"></i>MODIS estimated on the VIIRS scale</span>
     </div>
-    <p class="note" id="grain-note" hidden>Weeks run Monday to Sunday and are cut at the February–January season boundary. Weekly data start in February 2012. Month totals come from the monthly data.</p>
     <div id="chart" class="chart"></div>
     <div id="tip" class="tip" role="status" hidden></div>
     <details class="table-view">
