@@ -20,43 +20,39 @@
 <a class="skip" href="#calendar-section">Skip to calendar</a>
 
 <header class="top">
-  <div class="wrap top-inner">
-    <div>
-      <h1>Beyond the Hotspots</h1>
-      <p class="sub">Pantanal burning activity calendar · <span id="span-label">February 2012 – January 2018</span></p>
-    </div>
+  <div class="brand">
+    <h1>Beyond the Hotspots</h1>
+    <p class="sub">Pantanal burning activity calendar · <span id="span-label">February 2012 – January 2018</span></p>
+  </div>
+  <p class="answer" id="answer">Harmonized MODIS error against VIIRS: <strong>46.1%</strong> → <strong>4.7%</strong> <span class="note">in the two years held out from calibration</span></p>
+  <div class="actions">
+    <button id="download" class="primary" type="button">Download CSV</button>
     <button id="theme-toggle" class="ghost" type="button" aria-label="Switch color theme">Dark mode</button>
   </div>
 </header>
 
-<main class="wrap">
+<ol class="steps" aria-label="How to read this page">
+  <li>Pick a month in the calendar</li>
+  <li>Switch the source between VIIRS and MODIS</li>
+  <li>Check whether the month stays ▲ above usual</li>
+</ol>
 
-  <section class="answer" aria-labelledby="answer-title">
-    <h2 id="answer-title" class="answer-q">Can older MODIS records tell the same story as VIIRS?</h2>
-    <p class="answer-a">After harmonization, MODIS monthly error against VIIRS fell from <strong>46.1%</strong> to <strong>4.7%</strong> in the two years held out from calibration.</p>
-    <p class="note">Error is total absolute monthly difference divided by total observed VIIRS activity. Performance varies within the study area.</p>
-    <ol class="steps" aria-label="How to read this page">
-      <li>Pick a month in the calendar.</li>
-      <li>Switch the source between VIIRS and MODIS.</li>
-      <li>Check whether the month stays ▲ above usual.</li>
-    </ol>
-  </section>
+<main class="dash">
 
-  <section id="calendar-section" class="card" aria-labelledby="cal-title">
+  <section id="calendar-section" class="card cal-card" aria-labelledby="cal-title">
     <div class="card-head">
       <h2 id="cal-title">Monthly activity</h2>
       <div class="src-pick"><span id="src-label">Compare sources</span>
-      <div class="seg" role="radiogroup" aria-labelledby="src-label">
-        <button role="radio" aria-checked="true" data-src="viirs">VIIRS observed</button>
-        <button role="radio" aria-checked="false" data-src="modis">MODIS raw</button>
-        <button role="radio" aria-checked="false" data-src="modis_cal">MODIS harmonized</button>
-      </div></div>
+        <div class="seg" role="radiogroup" aria-labelledby="src-label">
+          <button role="radio" aria-checked="true" data-src="viirs">VIIRS</button>
+          <button role="radio" aria-checked="false" data-src="modis">MODIS raw</button>
+          <button role="radio" aria-checked="false" data-src="modis_cal">MODIS harmonized</button>
+        </div>
+      </div>
     </div>
     <p class="note" id="src-note">Observed Suomi NPP VIIRS active cell-days.</p>
-    <p class="note mobile-only">Swipe sideways to see every month.</p>
     <div class="cal-scroll"><div id="calendar" class="calendar" role="grid" aria-label="Burning activity by month"></div></div>
     <div class="legend" aria-hidden="true">
-      <span>Active cell-days</span>
       <span class="key"><i style="background:var(--fire-1)"></i>&lt;50</span>
       <span class="key"><i style="background:var(--fire-2)"></i>50–149</span>
       <span class="key"><i style="background:var(--fire-3)"></i>150–399</span>
@@ -67,9 +63,15 @@
     </div>
   </section>
 
+  <section class="card map-card" aria-labelledby="map-title">
+    <h2 id="map-title">Where: Pantanal study area</h2>
+    <div id="map" class="map" role="img" aria-label="Map of South America centered on the Pantanal, with the study area rectangle from 58 to 56 degrees west and 19.5 to 17 degrees south"></div>
+    <p class="note">Brazil, near Bolivia and Paraguay · 58°W–56°W, 19.5°S–17°S · values cover the whole rectangle.</p>
+  </section>
+
   <section id="detail" class="card detail" aria-live="polite" aria-labelledby="detail-title"></section>
 
-  <section class="card" aria-labelledby="chart-title">
+  <section class="card chart-card" aria-labelledby="chart-title">
     <div class="card-head">
       <h2 id="chart-title">Three sources over time</h2>
       <div class="range">
@@ -90,38 +92,26 @@
     </details>
   </section>
 
-  <section class="card" aria-labelledby="agree-title">
-    <h2 id="agree-title">Which months look unusual? 2017 test year</h2>
-    <p class="note">Each method's call compared with VIIRS. A month is above usual when it passes the 75th percentile of the same month in the five prior years.</p>
+  <section class="card agree-card" aria-labelledby="agree-title">
+    <h2 id="agree-title">Unusual months, 2017 test year</h2>
+    <p class="note">Compared with VIIRS. Above usual = past the 75th percentile of the same month, five prior years.</p>
     <div id="agreement" class="agreement"></div>
   </section>
 
-  <div class="two">
-    <section class="card" aria-labelledby="map-title">
-      <h2 id="map-title">Pantanal study area</h2>
-      <div id="map" class="map" role="img" aria-label="Map of the Pantanal study area rectangle, 58 to 56 degrees west, 19.5 to 17 degrees south"></div>
-      <p class="note">Bounds: 58°W–56°W, 19.5°S–17°S. Values cover the whole rectangle.</p>
-    </section>
-
-    <section class="card" aria-labelledby="dl-title">
-      <h2 id="dl-title">Download</h2>
-      <p>Monthly rows for <strong id="dl-range"></strong>, with activity, median, coverage and source.</p>
-      <button id="download" class="primary" type="button">Download CSV</button>
-      <h3>About the data</h3>
-      <ul class="facts">
-        <li><b>Active cell-day:</b> a 2 km grid cell with at least one qualifying detection on one local day. It counts burning activity, not individual fires.</li>
-        <li><b>Harmonized MODIS:</b> combined Terra and Aqua cell-days × <span id="factor">1.84</span>, an estimate on the VIIRS scale.</li>
-        <li><b>Qualifying detections:</b> vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS confidence nominal or high.</li>
-        <li><b>Status:</b> observation coverage unverified; VIIRS hotspot type provisional.</li>
-        <li><b>Local time:</b> America/Cuiaba.</li>
-      </ul>
-      <p class="note">Source: <a href="https://firms.modaps.eosdis.nasa.gov/download/">NASA FIRMS archive</a>.</p>
-    </section>
-  </div>
 </main>
 
-<footer class="wrap foot">
-  <p>NASA Space Apps Challenge 2026 · The Kernel team</p>
+<footer class="foot">
+  <details>
+    <summary>About the data</summary>
+    <ul class="facts">
+      <li><b>Active cell-day:</b> a 2 km grid cell with at least one qualifying detection on one local day. It counts burning activity, not individual fires.</li>
+      <li><b>Harmonized MODIS:</b> combined Terra and Aqua cell-days × <span id="factor">1.84</span>, an estimate on the VIIRS scale.</li>
+      <li><b>Qualifying detections:</b> vegetation fire (type 0), MODIS confidence ≥ 30, VIIRS confidence nominal or high.</li>
+      <li><b>Status:</b> observation coverage unverified; VIIRS hotspot type provisional. Local time: America/Cuiaba.</li>
+      <li><b>Download:</b> <span id="dl-range"></span>, with activity, median, coverage and source.</li>
+    </ul>
+  </details>
+  <p>Source: <a href="https://firms.modaps.eosdis.nasa.gov/download/">NASA FIRMS</a> · NASA Space Apps Challenge 2026 · The Kernel team</p>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>

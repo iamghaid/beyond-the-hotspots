@@ -79,8 +79,8 @@
       '<div class="kvs">' +
       '<div class="kv"><small>' + src.label + (isEst ? " (estimate)" : "") + '</small><b>' + (isEst ? "≈ " : "") + fmt(v, isEst ? 1 : 0) + '</b></div>' +
       cmp +
-      '<div class="kv"><small>Coverage</small><b class="soft">' + cap(r.coverage) + '</b></div>' +
       '</div>' +
+      '<p class="note">Coverage: ' + r.coverage + ' · VIIRS hotspot type: ' + r.viirs_type + '</p>' +
       (state.src !== "viirs" && dd ? '<p class="note">The median and the above-usual threshold come from VIIRS. Raw MODIS sits on a smaller scale, so comparing it with them shows what goes wrong without harmonization.</p>' : "") +
       '<div class="compare" aria-label="All three sources for this month">' +
       bar("VIIRS observed", "viirs", r.viirs, pct, med, 0) +
@@ -98,8 +98,8 @@
   function drawChart() {
     const rows = rangeRows();
     const box = $("chart");
-    const W = Math.max(320, box.clientWidth || 800), H = W < 560 ? 240 : 300;
-    const m = { t: 12, r: 12, b: 28, l: 48 };
+    const W = Math.max(320, box.clientWidth || 800), H = Math.max(160, box.clientHeight || 200);
+    const m = { t: 8, r: 10, b: 22, l: 44 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const max = Math.max(...rows.map((r) => Math.max(r.viirs, r.modis, r.modis_cal))) || 1;
     const nice = niceMax(max);
@@ -170,10 +170,10 @@
   function drawAgreement() {
     const rows = state.data.months.filter((r) => r.eligible === true);
     const methods = [
-      { key: "high_viirs", name: "VIIRS", sub: "Reference" },
-      { key: "high_modis_raw", name: "MODIS raw", sub: "VIIRS threshold" },
-      { key: "high_modis_own", name: "MODIS raw", sub: "Its own threshold" },
-      { key: "high_modis_cal", name: "MODIS harmonized", sub: "VIIRS threshold" }
+      { key: "high_viirs", name: "VIIRS", sub: "reference", short: "VIIRS" },
+      { key: "high_modis_raw", name: "MODIS raw", sub: "VIIRS threshold", short: "raw" },
+      { key: "high_modis_own", name: "MODIS raw", sub: "own threshold", short: "own threshold" },
+      { key: "high_modis_cal", name: "Harmonized", sub: "VIIRS threshold", short: "harmonized" }
     ];
     const el = $("agreement");
     el.style.gridTemplateColumns = "";
@@ -196,24 +196,32 @@
       md.summary = md.key === "high_viirs" ? null : { off, caught, ref, n: rows.length };
     }
     el.innerHTML = h;
-    const sums = methods.filter((m) => m.summary).map((m) =>
-      "<li><b>" + m.name + ", " + m.sub + ":</b> " + m.summary.off + " of " + m.summary.n + " months disagree · caught " + m.summary.caught + " of " + m.summary.ref + " VIIRS-high month" + (m.summary.ref === 1 ? "" : "s") + "</li>").join("");
+    const ms = methods.filter((m) => m.summary);
+    const sums = "<b>Months that disagree with VIIRS:</b> " + ms.map((m) => m.short + " " + m.summary.off + "/" + m.summary.n).join(" · ") +
+      "<br><b>VIIRS-high month caught:</b> " + ms.map((m) => m.short + " " + m.summary.caught + "/" + m.summary.ref).join(" · ");
     el.insertAdjacentHTML("afterend", "");
     let s = document.getElementById("ag-summary");
     if (!s) { s = document.createElement("div"); s.id = "ag-summary"; el.after(s); }
     s.innerHTML =
-      '<div class="ag-key"><span><i style="background:var(--alert)"></i>Above usual, agrees with VIIRS</span><span><i style="box-shadow:inset 0 0 0 2px var(--alert)"></i>Missed</span><span><i style="background:repeating-linear-gradient(45deg,var(--median) 0 3px,transparent 3px 7px)"></i>Extra high call</span><span><i style="background:var(--raised)"></i>Usual, agrees</span></div>' +
-      '<ul class="facts">' + sums + "</ul>" +
-      '<p class="note">The test year has one VIIRS-high month, so read this as a first result, not proof.</p>';
+      '<div class="ag-key"><span><i style="background:var(--alert)"></i>Caught</span><span><i style="box-shadow:inset 0 0 0 2px var(--alert)"></i>Missed</span><span><i style="background:repeating-linear-gradient(45deg,var(--median) 0 3px,transparent 3px 7px)"></i>Extra high call</span><span><i style="background:var(--raised)"></i>Usual, agrees</span></div>' +
+      '<p class="ag-sum-line">' + sums + " <span>(one high month: a first result, not proof)</span></p>";
   }
 
   // ---------- map ----------
+  let map, tiles;
+  function tileUrl() {
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    return "https://{s}.basemaps.cartocdn.com/" + (dark ? "dark_all" : "light_all") + "/{z}/{x}/{y}{r}.png";
+  }
+  function setMapTheme() { if (tiles) tiles.setUrl(tileUrl()); }
   function drawMap() {
     if (!window.L) { $("map").textContent = "Map unavailable offline."; return; }
     const b = [[-19.5, -58], [-17, -56]];
-    const map = L.map("map", { scrollWheelZoom: false, attributionControl: true }).fitBounds(b, { padding: [24, 24] });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 12, attribution: "© OpenStreetMap" }).addTo(map);
-    L.rectangle(b, { color: "#B23B1D", weight: 2, fillOpacity: 0.08 }).addTo(map).bindTooltip(AREA);
+    map = L.map("map", { scrollWheelZoom: false, attributionControl: true }).fitBounds([[-24, -63], [-12, -51]]);
+    tiles = L.tileLayer(tileUrl(), { maxZoom: 12, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO" }).addTo(map);
+    L.rectangle(b, { color: "#DA5E25", weight: 2.5, fillColor: "#F38C48", fillOpacity: 0.25 }).addTo(map)
+      .bindTooltip("Pantanal study area", { permanent: true, direction: "top", className: "area-label", offset: [0, -4] });
+    setTimeout(() => map.invalidateSize(), 200);
   }
 
   // ---------- range + export ----------
@@ -267,9 +275,9 @@
       const t = isDark() ? "light" : "dark";
       document.documentElement.dataset.theme = t;
       try { localStorage.setItem("theme", t); } catch (e) {}
-      sync(); drawChart();
+      sync(); drawChart(); setMapTheme();
     });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { sync(); drawChart(); setMapTheme(); });
     sync();
   }
 
@@ -287,6 +295,7 @@
     document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setSource(b.dataset.src)));
     $("download").addEventListener("click", download);
     let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+    if (window.ResizeObserver) new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(drawChart, 80); }).observe($("chart"));
 
     setupTheme(); setupRange(); renderRange(); drawDetail(); drawAgreement(); drawMap();
     if (innerWidth < 760) { document.querySelector(".cal-scroll").scrollLeft = 9999; $("agreement").scrollLeft = 9999; }
