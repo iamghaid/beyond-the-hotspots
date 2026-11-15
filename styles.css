@@ -49,6 +49,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ghost:hover { background: var(--raised); }
 .primary { background: var(--text); color: var(--page); border: 0; border-radius: var(--radius); padding: 8px 14px; min-height: 40px; font-weight: 500; }
 .primary:hover { opacity: .88; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.team-logo { height: 44px; width: auto; border-radius: 8px; flex: none; }
+.globe-cta { justify-content: center; margin-top: 8px; flex: none; }
+@media (max-width: 700px) { .team-logo { height: 34px; } }
 .dl { position: relative; }
 .dl > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .dl > summary::-webkit-details-marker { display: none; }
