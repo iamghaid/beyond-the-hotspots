@@ -36,7 +36,16 @@
   <p class="answer">MODIS error vs observed VIIRS after harmonization: <strong>44.48%</strong> → <strong>9.94%</strong> <span class="note">across 120 months outside model fitting (10 seasons)</span></p>
   <div class="actions">
     <a id="globe-link" class="ghost link-btn" href="https://beyond-the-hotspots-globe.vercel.app/">3D fire map</a>
-    <button id="download" class="primary" type="button">Download CSV</button>
+    <details class="dl" id="dl">
+      <summary class="primary" id="download">Download CSV</summary>
+      <div class="dl-menu" role="menu" aria-label="Download CSV">
+        <button type="button" role="menuitem" data-dl="all-months"><b>All months</b><span id="dl-all-span">Feb 2003 – Jan 2026 · every year</span></button>
+        <button type="button" role="menuitem" data-dl="all-weeks"><b>All weeks</b><span>Feb 2012 – Jan 2026 · VIIRS period</span></button>
+        <button type="button" role="menuitem" data-dl="range"><b>Selected seasons</b><span id="dl-range-span">Months in the chart's season range</span></button>
+        <button type="button" role="menuitem" data-dl="year"><b>Selected year</b><span id="dl-year-span">12 months of the year in the calendar</span></button>
+        <button type="button" role="menuitem" data-dl="errors"><b>Error by season</b><span>Raw and harmonized error vs VIIRS</span></button>
+      </div>
+    </details>
     <button id="theme-toggle" class="ghost" type="button" aria-label="Switch color theme">Dark mode</button>
   </div>
 </header>

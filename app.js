@@ -460,12 +460,13 @@
     $("dl-range").textContent = "seasons " + seasonLabel(state.from) + " to " + seasonLabel(state.to) + " (" + rangeRows().length + " months), with all three series, season, coverage and source";
     drawCalendar(); drawChart(); drawTable();
   }
-  function downloadWeeks() {
+  const csvCell = (v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v;
+  function downloadWeeks(rows, name) {
     const meta = state.meta;
     const cols = ["week_start_local", "week_end_local", "days", "is_partial_week", "season", "study_area", "observed_modis_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "coverage_status", "viirs_type_status", "timezone", "grid_crs", "cell_size_m", "method_version", "calibration_model_status", "source"];
     const lines = [cols.join(",")];
-    for (const w of weekRows()) lines.push([w.start, w.end, w.days, w.partial ? "True" : "False", seasonLabel(w.season), AREA, w.modis, w.snpp, w.est ?? "", meta.coverage_status, meta.viirs_type_status_paired, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.calibration_model_status, "NASA FIRMS active fire archive"].join(","));
-    saveCsv(lines, "pantanal_weekly_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv");
+    for (const w of rows) lines.push([w.start, w.end, w.days, w.partial ? "True" : "False", seasonLabel(w.season), AREA, w.modis, w.snpp, w.est ?? "", meta.coverage_status, meta.viirs_type_status_paired, meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, meta.calibration_model_status, "NASA FIRMS active fire archive"].map(csvCell).join(","));
+    saveCsv(lines, name);
   }
   function saveCsv(lines, name) {
     const a = document.createElement("a");
@@ -474,23 +475,43 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
-  function download() {
-    if (state.grain === "week") return downloadWeeks();
+  function downloadMonths(rows, name) {
     const meta = state.meta;
     const cols = ["month_id", "period_start_local", "period_end_local", "season", "study_area", "observed_modis_cell_days", "aqua_cell_days", "terra_cell_days", "observed_snpp_viirs_cell_days", "modis_estimated_on_snpp_scale_cell_days", "calendar_view_value", "calendar_view_series", "coverage_status", "viirs_type_status", "modis_versions", "timezone", "grid_crs", "cell_size_m", "method_version", "calibration_model_status", "source"];
     const lines = [cols.join(",")];
-    for (const r of rangeRows()) {
+    for (const r of rows) {
       const paired = r.display === "est";
       const vals = [r.start, r.start + "-01", r.start + "-" + lastDay(r.start), seasonLabel(r.season), AREA, r.modis, r.aqua, r.terra, r.snpp ?? "", r.est ?? "", r[r.display],
         paired ? "Harmonized MODIS (FRP ensemble, VIIRS scale)" : "Observed MODIS", meta.coverage_status, paired ? meta.viirs_type_status_paired : "", r.versions.replace("|", " "),
         meta.timezone, meta.grid_crs, meta.cell_size_m, meta.method_version, paired ? meta.calibration_model_status : "", "NASA FIRMS active fire archive"];
-      lines.push(vals.map((v) => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(","));
+      lines.push(vals.map(csvCell).join(","));
     }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" }));
-    a.download = "pantanal_activity_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    saveCsv(lines, name);
+  }
+  function downloadErrors() {
+    const E = seasonErrors();
+    const lines = ["season,role,months,observed_snpp_viirs_cell_days,raw_modis_abs_error_cell_days,harmonized_modis_abs_error_cell_days,raw_modis_weighted_abs_error_pct,harmonized_modis_weighted_abs_error_pct,method_version"];
+    for (const s of E.list) lines.push([seasonLabel(s.season), s.fit ? "fitting" : "outside_fitting", s.n, s.obs, s.raw.toFixed(4), s.harm.toFixed(4), s.rawP.toFixed(2), s.harmP.toFixed(2), state.meta.method_version].join(","));
+    lines.push(["all_outside_fitting", "outside_fitting", E.months, "", "", "", E.rawP.toFixed(2), E.harmP.toFixed(2), state.meta.method_version].join(","));
+    saveCsv(lines, "pantanal_error_by_season.csv");
+  }
+  async function download(kind) {
+    const first = state.rows[0].start, last = state.rows[state.rows.length - 1].start;
+    if (kind === "all-months") return downloadMonths(state.rows, "pantanal_monthly_" + first + "_to_" + last + ".csv");
+    if (kind === "all-weeks") { const w = await loadWeeks(); return downloadWeeks(w, "pantanal_weekly_" + w[0].start + "_to_" + w[w.length - 1].end + ".csv"); }
+    if (kind === "range") {
+      if (state.grain === "week") { await loadWeeks(); return downloadWeeks(weekRows(), "pantanal_weekly_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv"); }
+      return downloadMonths(rangeRows(), "pantanal_monthly_" + seasonLabel(state.from) + "_to_" + seasonLabel(state.to) + ".csv");
+    }
+    if (kind === "year") { const y = state.sel.slice(0, 4); return downloadMonths(state.rows.filter((r) => r.start.startsWith(y)), "pantanal_monthly_" + y + ".csv"); }
+    if (kind === "errors") return downloadErrors();
+  }
+  function syncDlLabels() {
+    if (!state.rows.length) return;
+    const f = state.rows[0].start, l = state.rows[state.rows.length - 1].start;
+    $("dl-all-span").textContent = label(f) + " – " + label(l) + " · " + state.rows.length + " months";
+    $("dl-range-span").textContent = (state.grain === "week" ? "Weeks" : "Months") + ", seasons " + seasonLabel(state.from) + " to " + seasonLabel(state.to);
+    $("dl-year-span").textContent = "Months of " + state.sel.slice(0, 4) + " (calendar year)";
   }
 
   // ---------- interactions ----------
@@ -574,7 +595,10 @@
     });
     document.querySelectorAll(".seg button[data-src]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
     document.querySelectorAll(".chart-mode button").forEach((b) => b.addEventListener("click", () => setChartMode(b.dataset.chart)));
-    $("download").addEventListener("click", download);
+    $("dl").addEventListener("toggle", () => { if ($("dl").open) syncDlLabels(); });
+    document.querySelectorAll(".dl-menu button").forEach((b) => b.addEventListener("click", async () => { $("dl").open = false; try { await download(b.dataset.dl); } catch (e) { console.error(e); } }));
+    document.addEventListener("click", (e) => { if ($("dl").open && !$("dl").contains(e.target)) $("dl").open = false; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("dl").open) { $("dl").open = false; $("download").focus(); } });
     document.querySelectorAll(".grain button").forEach((b) => b.addEventListener("click", () => setGrain(b.dataset.grain)));
     let rt;
     addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); fitCells(); }, 120); });
