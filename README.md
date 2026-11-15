@@ -26,6 +26,18 @@ NASA has watched fires from space with **MODIS** (Terra and Aqua, since 2000, ~1
 
 That gap breaks long-term analysis. Put MODIS years next to VIIRS years and the record "jumps" in 2012 because the sensor changed, not because the fires did. Our goal was to put MODIS on the VIIRS scale, prove how well that works, and give people one calendar where they can explore burning activity and spot unusual months.
 
+## Our algorithm in brief
+
+> We fit two models against observed S-NPP VIIRS cell-day counts by minimizing absolute error on seasons 2013–2016: one applies a single multiplier (1.84) to weekly MODIS counts, and the other applies separate non-negative weights to monthly MODIS counts in three fire radiative power bands (<10, 10–50, ≥50 MW). The final estimate is the 50/50 average of the two predictions.
+
+| Step | Algorithm | Output |
+|---|---|---|
+| 1. Single multiplier | **Weighted median** of weekly VIIRS ÷ MODIS ratios, the exact least-absolute-error solution for one factor | k = 1.84 |
+| 2. FRP-band model | **L1 regression** (least absolute deviations) with non-negative coefficients, solved by **linear programming** (SciPy) | 1.142 low · 2.425 medium · 0.952 high |
+| 3. Final estimate | **Ensemble average**, 50/50 of steps 1 and 2 | VIIRS-equivalent cell-days |
+
+Why L1 and not ordinary least squares: absolute error is not dominated by a few extreme months such as September 2020, so one huge fire season cannot pull the coefficients toward itself. The model has four numbers in total, which keeps it easy to explain and hard to overfit.
+
 ## Result
 
 Across **120 months that the model never saw**, MODIS error against observed VIIRS fell from **44.48% to 9.94%**.
@@ -76,7 +88,7 @@ flowchart LR
 2. **Why fire intensity.** VIIRS adds small, low-intensity fires. Intense fires are seen by both sensors. A single multiplier therefore over-corrects the biggest fire months. We split MODIS cell-days into three fire radiative power (FRP) bands, using the maximum FRP per cell-day: under 10 MW, 10–50 MW and 50 MW or more.
 3. **Model.**
    `harmonized = 0.5 × (1.84 × MODIS) + 0.5 × (1.142 × low + 2.425 × medium + 0.952 × high)`
-   The 1.84 multiplier minimizes weekly absolute error. The three FRP coefficients minimize monthly absolute error (linear programming, bounded 0–6). Both are fitted only on February 2013 – January 2017.
+   The 1.84 multiplier minimizes weekly absolute error over 206 complete weeks; its solution is the MODIS-weighted median of weekly VIIRS/MODIS ratios. The three FRP coefficients minimize monthly absolute error over 48 months (L1 regression solved by linear programming, bounded 0–6). Both are fitted only on February 2013 – January 2017.
 4. **Evaluation.** Weighted absolute error = Σ |estimate − VIIRS| ÷ Σ VIIRS, so busy months count more than near-empty ones. Seasons run February to January.
 5. **Unusual months.** "Usual" is the median of the same calendar month within the same series: observed MODIS for 2003–2025, harmonized MODIS for 2012–2025.
 
