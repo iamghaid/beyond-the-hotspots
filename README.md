@@ -30,6 +30,31 @@ That gap breaks long-term analysis. Put MODIS years next to VIIRS years and the 
 
 > We fit two models against observed S-NPP VIIRS cell-day counts by minimizing absolute error on seasons 2013–2016: one applies a single multiplier (1.84) to weekly MODIS counts, and the other applies separate non-negative weights to monthly MODIS counts in three fire radiative power bands (<10, 10–50, ≥50 MW). The final estimate is the 50/50 average of the two predictions.
 
+```mermaid
+flowchart TB
+  subgraph IN["Inputs, fitting seasons 2013–2016"]
+    M["MODIS cell-days<br>Terra + Aqua, 2 km grid"]
+    V["Observed VIIRS S-NPP<br>cell-days (target)"]
+  end
+
+  M --> W["Weekly MODIS totals"]
+  M --> F["Monthly MODIS totals<br>split by max FRP per cell-day<br>low under 10 · medium 10–50 · high 50+ MW"]
+
+  W --> A1["Model 1: single multiplier<br>minimize Σ |k·MODIS − VIIRS|<br>solved by weighted median"]
+  F --> B1["Model 2: FRP-band weights<br>minimize Σ |c₁·low + c₂·med + c₃·high − VIIRS|<br>L1 regression via linear programming, c ≥ 0"]
+  V -. target .-> A1
+  V -. target .-> B1
+
+  A1 --> A2["k = 1.84<br>estimate A = 1.84 × MODIS"]
+  B1 --> B2["c = 1.142 · 2.425 · 0.952<br>estimate B = Σ cᵢ × band"]
+
+  A2 --> E["Final estimate<br>0.5 × A + 0.5 × B"]
+  B2 --> E
+
+  E --> T["Test on 10 other seasons, 120 months<br>error vs VIIRS: 44.48% → 9.94%"]
+  E --> C["VIIRS-equivalent calendar<br>2003–2026"]
+```
+
 | Step | Algorithm | Output |
 |---|---|---|
 | 1. Single multiplier | **Weighted median** of weekly VIIRS ÷ MODIS ratios, the exact least-absolute-error solution for one factor | k = 1.84 |
