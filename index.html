@@ -85,12 +85,21 @@
   <section class="card chart-card" aria-labelledby="chart-title">
     <div class="card-head">
       <h2 id="chart-title">Three series over time</h2>
-      <div class="range">
+      <div class="seg chart-mode" role="radiogroup" aria-label="Chart shown">
+        <button role="radio" aria-checked="true" data-chart="values">Values</button>
+        <button role="radio" aria-checked="false" data-chart="error">Error by season</button>
+      </div>
+      <div class="range" id="range">
         <label>From season <select id="from"></select></label>
         <label>to <select id="to"></select></label>
       </div>
     </div>
-    <div class="series-key" aria-hidden="true">
+    <div class="series-key err-key" id="err-key" aria-hidden="true" hidden>
+      <span><i class="sw raw"></i>Raw MODIS vs VIIRS</span>
+      <span><i class="sw harm"></i>Harmonized MODIS vs VIIRS</span>
+      <span><i class="sw fit"></i>Season used to fit the model</span>
+    </div>
+    <div class="series-key" id="val-key" aria-hidden="true">
       <span><i class="ln modis"></i>Observed MODIS (Terra + Aqua)</span>
       <span><i class="ln snpp"></i>Observed VIIRS (S-NPP)</span>
       <span><i class="ln est"></i>Harmonized MODIS (FRP ensemble, VIIRS scale)</span>

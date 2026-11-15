@@ -49,7 +49,7 @@
     return { bg: "rgb(" + rgb.map(toSrgb).join(",") + ")", ink: lum > 0.28 ? "#13202E" : "#FFFFFF" };
   }
 
-  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", weeks: null, weekIdx: {}, selWeek: null };
+  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", chart: "values", weeks: null, weekIdx: {}, selWeek: null };
   const $ = (id) => document.getElementById(id);
   const fmt = (v, d = 0) => v == null ? "Unavailable" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: d });
   const split = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
@@ -218,7 +218,71 @@
   }
 
   // ---------- chart ----------
+  // ---------- error by season ----------
+  const FIT = [2013, 2014, 2015, 2016];
+  function seasonErrors() {
+    const by = {};
+    for (const r of state.rows) {
+      if (r.snpp == null || r.est == null) continue;
+      const s = by[r.season] || (by[r.season] = { season: r.season, raw: 0, harm: 0, obs: 0, n: 0 });
+      s.raw += Math.abs(r.modis - r.snpp); s.harm += Math.abs(r.est - r.snpp); s.obs += r.snpp; s.n++;
+    }
+    const list = Object.values(by).sort((a, b) => a.season - b.season).map((s) => ({ ...s, fit: FIT.includes(s.season), rawP: (100 * s.raw) / s.obs, harmP: (100 * s.harm) / s.obs }));
+    const t = list.filter((s) => !s.fit).reduce((a, s) => ({ raw: a.raw + s.raw, harm: a.harm + s.harm, obs: a.obs + s.obs, n: a.n + s.n }), { raw: 0, harm: 0, obs: 0, n: 0 });
+    return { list, rawP: (100 * t.raw) / t.obs, harmP: (100 * t.harm) / t.obs, months: t.n, seasons: list.filter((s) => !s.fit).length };
+  }
+  function drawErrorChart() {
+    const box = $("chart"), E = seasonErrors(), L = E.list;
+    const W = Math.max(320, box.clientWidth || 800), H = Math.max(140, box.clientHeight || 200);
+    const m = { t: 24, r: 10, b: 22, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const nice = 60, y = (v) => m.t + ih - (Math.min(v, nice) / nice) * ih;
+    const gw = iw / L.length, bw = Math.max(4, Math.min(18, gw * 0.32));
+    const css = getComputedStyle(document.documentElement), c = (n) => css.getPropertyValue(n).trim();
+    let g = "";
+    for (let i = 0; i <= 3; i++) { const v = i * 20; g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text x="' + (m.l - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + "%</text>"; }
+    let bars = "", xt = "";
+    const showVals = gw >= 34;
+    L.forEach((s, i) => {
+      const cx = m.l + gw * i + gw / 2, op = s.fit ? 0.45 : 1;
+      if (s.fit) bars += '<rect x="' + (m.l + gw * i + 1) + '" y="' + m.t + '" width="' + (gw - 2) + '" height="' + ih + '" fill="url(#fit-hatch)" opacity=".5"/>';
+      bars += '<rect x="' + (cx - bw - 1) + '" y="' + y(s.rawP) + '" width="' + bw + '" height="' + (m.t + ih - y(s.rawP)) + '" rx="2" fill="' + c("--median") + '" opacity="' + (0.55 * op) + '"/>';
+      bars += '<rect x="' + (cx + 1) + '" y="' + y(s.harmP) + '" width="' + bw + '" height="' + (m.t + ih - y(s.harmP)) + '" rx="2" fill="' + c("--est") + '" opacity="' + op + '"/>';
+      if (showVals) bars += '<text class="bar-v" x="' + (cx + 1 + bw / 2) + '" y="' + (y(s.harmP) - 4) + '" text-anchor="middle">' + Math.round(s.harmP) + "</text>";
+      const lab = gw >= 44 ? s.season + "–" + String((s.season + 1) % 100).padStart(2, "0") : "’" + String(s.season % 100).padStart(2, "0");
+      xt += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle">' + lab + "</text>";
+      bars += '<rect class="err-hit" data-i="' + i + '" x="' + (m.l + gw * i) + '" y="' + m.t + '" width="' + gw + '" height="' + ih + '" fill="transparent"/>';
+    });
+    const sum = "Seasons outside fitting: raw MODIS " + E.rawP.toFixed(2) + "% → harmonized " + E.harmP.toFixed(2) + "% (" + E.months + " months, " + E.seasons + " seasons)";
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Weighted absolute error against observed VIIRS by season. ' + sum + '. ' + L.map((s) => s.season + ": raw " + s.rawP.toFixed(1) + "%, harmonized " + s.harmP.toFixed(1) + "%" + (s.fit ? " (fitting season)" : "")).join("; ") + '">' +
+      '<defs><pattern id="fit-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="' + c("--border") + '" stroke-width="2"/></pattern></defs>' +
+      '<text class="err-sum" x="' + m.l + '" y="14">' + sum + "</text>" +
+      '<g class="grid axis">' + g + xt + "</g>" + bars + "</svg>";
+    const tip = $("tip");
+    box.querySelectorAll(".err-hit").forEach((el) => {
+      el.addEventListener("pointermove", () => {
+        const s = L[+el.dataset.i];
+        tip.hidden = false;
+        tip.innerHTML = "<b>Season " + seasonLabel(s.season) + (s.fit ? " · used to fit the model" : " · outside fitting") + "</b>" +
+          "<span><em>Raw MODIS error</em>" + s.rawP.toFixed(1) + "%</span><span><em>Harmonized MODIS error</em>" + s.harmP.toFixed(1) + "%</span><span><em>Months</em>" + s.n + "</span>";
+        const bw2 = box.clientWidth, sx = ((m.l + gw * (+el.dataset.i) + gw / 2) / W) * bw2;
+        tip.style.left = (sx + 230 > bw2 ? sx - 236 : sx + 14) + "px";
+        tip.style.top = (box.offsetTop + 8) + "px";
+      });
+      el.addEventListener("pointerleave", () => { tip.hidden = true; });
+    });
+  }
+  function setChartMode(mode) {
+    state.chart = mode;
+    document.querySelectorAll(".chart-mode button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.chart === mode)));
+    const err = mode === "error";
+    $("range").hidden = err; $("val-key").hidden = err; $("err-key").hidden = !err;
+    $("chart-title").textContent = err ? "Error against VIIRS, by season" : "Three series over time";
+    drawChart();
+  }
+
   function drawChart() {
+    if (state.chart === "error") return drawErrorChart();
     const weekly = state.grain === "week";
     const rows = weekly ? weekRows() : rangeRows();
     const box = $("chart");
@@ -508,6 +572,7 @@
       select(k, true);
     });
     document.querySelectorAll(".seg button[data-src]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
+    document.querySelectorAll(".chart-mode button").forEach((b) => b.addEventListener("click", () => setChartMode(b.dataset.chart)));
     $("download").addEventListener("click", download);
     document.querySelectorAll(".grain button").forEach((b) => b.addEventListener("click", () => setGrain(b.dataset.grain)));
     let rt;

@@ -270,6 +270,15 @@ html.fit .months { grid-auto-rows: minmax(0, 1fr); grid-template-rows: repeat(3,
 .globe-label { background: #13202E; color: #fff; font: 700 12px "Atkinson Hyperlegible Next", sans-serif; padding: 4px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%); pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
 .chart-card .card-head { gap: 10px; }
 .cal-card .grain button { padding: 6px 12px; font-size: 14px; font-weight: 700; min-height: 38px; }
+.chart-mode button { padding: 6px 12px; font-size: 13px; min-height: 34px; }
+.err-key[hidden], .range[hidden], .series-key[hidden] { display: none; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.sw.raw { background: var(--median); opacity: .55; }
+.sw.harm { background: var(--est); }
+.sw.fit { background: repeating-linear-gradient(135deg, var(--text-2) 0 2px, transparent 2px 5px); opacity: .6; }
+.chart .err-sum { fill: var(--text); font-size: 12.5px; font-weight: 700; }
+.chart .bar-v { fill: var(--text-2); font-size: 10.5px; }
+.chart .err-hit { cursor: default; }
 .chart .empty { color: var(--text-2); font-size: 14px; padding: 24px 8px; margin: 0; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
