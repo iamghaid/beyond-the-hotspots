@@ -1,0 +1,323 @@
+{
+  "method_version": "pantanal_cell_days_frp_ensemble_v2",
+  "included_satellites": [
+    "Aqua",
+    "Terra",
+    "SNPP"
+  ],
+  "fit_seasons": [
+    2013,
+    2014,
+    2015,
+    2016
+  ],
+  "training_full_weeks": 206,
+  "training_months": 48,
+  "baseline_factor": 1.84,
+  "baseline_weight": 0.5,
+  "frp_weight": 0.5,
+  "frp_coefficients_low_medium_high": [
+    1.1422374826982187,
+    2.4245065990279424,
+    0.9523067447127549
+  ],
+  "frp_bands_mw": [
+    "[0,10)",
+    "[10,50)",
+    "[50,infinity)"
+  ],
+  "frp_aggregation": "maximum qualifying Aqua/Terra FRP per 2 km grid cell and local date",
+  "timezone": "America/Cuiaba",
+  "grid_crs": "EPSG:6933",
+  "cell_size_m": 2000,
+  "study_bounds_wgs84": [
+    -58,
+    -19.5,
+    -56,
+    -17
+  ],
+  "pilot_archive_sha256": "0f3714265302cf0b6d4d3909376b0d45aee16df8ae2217418cbf856888802b03",
+  "sources": {
+    "2012-2013": {
+      "modis_source_member": "2012-2013/fire_archive_MODIS_845351.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2012-2013/fire_archive_VIIRS_845352.csv",
+      "viirs_version": "2"
+    },
+    "2013-2014": {
+      "modis_source_member": "2013-2014/fire_archive_MODIS_845355.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2013-2014/fire_archive_VIIRS_845356.csv",
+      "viirs_version": "2"
+    },
+    "2014-2015": {
+      "modis_source_member": "2014-2015/fire_archive_MODIS_845359.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2014-2015/fire_archive_VIIRS_845360.csv",
+      "viirs_version": "2"
+    },
+    "2015-2016": {
+      "modis_source_member": "2015-2016/fire_archive_MODIS_845361.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2015-2016/fire_archive_VIIRS_845362.csv",
+      "viirs_version": "2"
+    },
+    "2016-2017": {
+      "modis_source_member": "2016-2017/fire_archive_MODIS_845363.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2016-2017/fire_archive_VIIRS_845364.csv",
+      "viirs_version": "2"
+    },
+    "2017-2018": {
+      "modis_source_member": "2017-2018/fire_archive_MODIS_845365.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "2017-2018/fire_archive_VIIRS_845366.csv",
+      "viirs_version": "2"
+    },
+    "2018-2019": {
+      "modis_source_member": "fire_archive_M-C61_848145.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "fire_archive_SV-C2_848146.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2018-2019.zip",
+      "modis_source_archive_sha256": "7b78628e9804effe71e3094ac5e16332f997a3ec9d0da169ba6d65e1f27c8a87",
+      "viirs_source_archive": "VIIRS 2018-2019.zip",
+      "viirs_source_archive_sha256": "9737ba0d7b9a5107252bf7daa62c4d8bfd3c4228439405354cc8309a9ed12579"
+    },
+    "2019-2020": {
+      "modis_source_member": "fire_archive_M-C61_848152.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "fire_archive_SV-C2_848153.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2019-2020.zip",
+      "modis_source_archive_sha256": "cac1b7676f9b02eb9c6fb7602487b8a185b244d7d71bf8bd349cc83fc514b0dd",
+      "viirs_source_archive": "VIIRS 2019-2020.zip",
+      "viirs_source_archive_sha256": "f7395b4ad0478b990ae29737efadf6d8efbd97eab5010aab11c8b0b8cfb3024b"
+    },
+    "2020-2021": {
+      "modis_source_member": "fire_archive_M-C61_848157.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "fire_archive_SV-C2_848158.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2020-2021.zip",
+      "modis_source_archive_sha256": "4ab07727422c500dce1f06dcab95b760ebf80dbfef4839be9a9a84497bc2231f",
+      "viirs_source_archive": "VIIRS 2020-2021.zip",
+      "viirs_source_archive_sha256": "ddf69d4c41531d2c04981b4405c1f13676be957ae6665c009f8eba1ae701f37b"
+    },
+    "2021-2022": {
+      "modis_source_member": "fire_archive_M-C61_848159.csv",
+      "modis_version": "6.03",
+      "viirs_source_member": "fire_archive_SV-C2_848160.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2021-2022.zip",
+      "modis_source_archive_sha256": "0baed15e201506b3c5dc0b45d7ce54bdcd21b5dbd93a242a4f6b92404ec6f381",
+      "viirs_source_archive": "VIIRS 2021-2022.zip",
+      "viirs_source_archive_sha256": "c2fbd2d5a9b798a142fff35a458a7b8f3726aabfb6818040da26e2b50a93f146"
+    },
+    "2022-2023": {
+      "modis_source_member": "fire_archive_M-C61_848163.csv",
+      "modis_version": "6.03|61.03",
+      "viirs_source_member": "fire_archive_SV-C2_848164.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2022-2023.zip",
+      "modis_source_archive_sha256": "4e92e1c90a4864c2c2ee9d06984a15010dcc09da9643bf3bee3520a670a5b1f7",
+      "viirs_source_archive": "VIIRS 2022-2023.zip",
+      "viirs_source_archive_sha256": "6204193c7a98cbdf41cae98ab1160d756038cdfe958044c181b38f6871698de0"
+    },
+    "2023-2024": {
+      "modis_source_member": "fire_archive_M-C61_848165.csv",
+      "modis_version": "61.03",
+      "viirs_source_member": "fire_archive_SV-C2_848166.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2023-2024.zip",
+      "modis_source_archive_sha256": "0a0409507caf42bbadbc0169a896f43e5e3eebc5bc462ab95a4c4801062f31a9",
+      "viirs_source_archive": "VIIRS 2023-2024.zip",
+      "viirs_source_archive_sha256": "cea5989b7cdf84ff3f9dfcdc9ee54041ce11aed49d3e14982003276c08e740d0"
+    },
+    "2024-2025": {
+      "modis_source_member": "fire_archive_M-C61_848171.csv",
+      "modis_version": "61.03",
+      "viirs_source_member": "fire_archive_SV-C2_848172.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2024-2025.zip",
+      "modis_source_archive_sha256": "bd3019295b6124e70ecccf737ff43b14171bde19df5bd8767cae1a9e8bea1873",
+      "viirs_source_archive": "VIIRS 2024-2025.zip",
+      "viirs_source_archive_sha256": "e18ea86ca197d1b9dadc9bc51351362ab681f161acfe8cdf61c2c2d915798072"
+    },
+    "2025-2026": {
+      "modis_source_member": "fire_archive_M-C61_848173.csv",
+      "modis_version": "61.03",
+      "viirs_source_member": "fire_archive_SV-C2_848174.csv",
+      "viirs_version": "2",
+      "modis_source_archive": "MODIS 2025-2026.zip",
+      "modis_source_archive_sha256": "70355cdaf2c619868e238cb49459a463c1e6e0e419743cfcf4c85969ab38f0c1",
+      "viirs_source_archive": "VIIRS 2025-2026.zip",
+      "viirs_source_archive_sha256": "4c50a9899dc853efac77fb91cf64beb0746407b7731246bce46eceddf67f8357"
+    }
+  },
+  "validation": [
+    {
+      "group": "later_orders",
+      "grain": "month",
+      "method": "baseline",
+      "periods": 96,
+      "weighted_absolute_error_pct": 12.752898550724638,
+      "mae_cell_days": 87.995,
+      "bias_pct": 2.7444444444444493
+    },
+    {
+      "group": "later_orders",
+      "grain": "month",
+      "method": "frp_only",
+      "periods": 96,
+      "weighted_absolute_error_pct": 11.204512263670166,
+      "mae_cell_days": 77.31113461932415,
+      "bias_pct": -5.4807546530399085
+    },
+    {
+      "group": "later_orders",
+      "grain": "month",
+      "method": "ensemble",
+      "periods": 96,
+      "weighted_absolute_error_pct": 10.786363320860191,
+      "mae_cell_days": 74.42590691393532,
+      "bias_pct": -1.3681551042977287
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "month",
+      "method": "baseline",
+      "periods": 120,
+      "weighted_absolute_error_pct": 11.508328546812178,
+      "mae_cell_days": 75.135,
+      "bias_pct": 2.182296253749445
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "month",
+      "method": "frp_only",
+      "periods": 120,
+      "weighted_absolute_error_pct": 10.535852392692687,
+      "mae_cell_days": 68.78594630879238,
+      "bias_pct": -5.032255308253652
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "month",
+      "method": "ensemble",
+      "periods": 120,
+      "weighted_absolute_error_pct": 9.940454886129013,
+      "mae_cell_days": 64.89874483781479,
+      "bias_pct": -1.4249795272521015
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "month",
+      "method": "baseline",
+      "periods": 168,
+      "weighted_absolute_error_pct": 11.408430025528931,
+      "mae_cell_days": 61.97833333333334,
+      "bias_pct": 1.508551644041245
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "month",
+      "method": "frp_only",
+      "periods": 168,
+      "weighted_absolute_error_pct": 10.26380556558913,
+      "mae_cell_days": 55.75995655748538,
+      "bias_pct": -4.339704082407647
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "month",
+      "method": "ensemble",
+      "periods": 168,
+      "weighted_absolute_error_pct": 9.87818887850192,
+      "mae_cell_days": 53.665025044761414,
+      "bias_pct": -1.4155762191832
+    },
+    {
+      "group": "later_orders",
+      "grain": "full_week",
+      "method": "baseline",
+      "periods": 410,
+      "weighted_absolute_error_pct": 16.490446248702764,
+      "mae_cell_days": 26.354146341463416,
+      "bias_pct": 2.993834320249073
+    },
+    {
+      "group": "later_orders",
+      "grain": "full_week",
+      "method": "frp_only",
+      "periods": 410,
+      "weighted_absolute_error_pct": 15.6526420101389,
+      "mae_cell_days": 25.015212562740032,
+      "bias_pct": -5.31571607103815
+    },
+    {
+      "group": "later_orders",
+      "grain": "full_week",
+      "method": "ensemble",
+      "periods": 410,
+      "weighted_absolute_error_pct": 15.157783845905508,
+      "mae_cell_days": 24.224356798027134,
+      "bias_pct": -1.1609408753945374
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "full_week",
+      "method": "baseline",
+      "periods": 512,
+      "weighted_absolute_error_pct": 16.03933750080557,
+      "mae_cell_days": 24.304921875,
+      "bias_pct": 2.3935038989495436
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "full_week",
+      "method": "frp_only",
+      "periods": 512,
+      "weighted_absolute_error_pct": 15.232167817437155,
+      "mae_cell_days": 23.081791799137925,
+      "bias_pct": -4.889179191883449
+    },
+    {
+      "group": "outside_fitting",
+      "grain": "full_week",
+      "method": "ensemble",
+      "periods": 512,
+      "weighted_absolute_error_pct": 14.80772247575716,
+      "mae_cell_days": 22.438616177375373,
+      "bias_pct": -1.2478376464669523
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "full_week",
+      "method": "baseline",
+      "periods": 718,
+      "weighted_absolute_error_pct": 16.12810506649568,
+      "mae_cell_days": 20.31894150417827,
+      "bias_pct": 1.6895099328962977
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "full_week",
+      "method": "frp_only",
+      "periods": 718,
+      "weighted_absolute_error_pct": 15.429651241864471,
+      "mae_cell_days": 19.438996690603545,
+      "bias_pct": -4.212057518580006
+    },
+    {
+      "group": "all_including_fitting",
+      "grain": "full_week",
+      "method": "ensemble",
+      "periods": 718,
+      "weighted_absolute_error_pct": 15.025302890792682,
+      "mae_cell_days": 18.929579715772057,
+      "bias_pct": -1.2612737928418545
+    }
+  ],
+  "limitations": "Historical evaluation periods were inspected during model development. Retrospective cross-sensor agreement only; fresh validation required. No observation masks. All-month scores include fitting data."
+}
