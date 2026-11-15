@@ -80,6 +80,10 @@
         <button role="radio" aria-checked="false" data-src="snpp" title="Observed VIIRS (S-NPP)">VIIRS</button>
         <button role="radio" aria-checked="false" data-src="est" title="Harmonized MODIS: FRP ensemble, on the VIIRS scale">Harmonized MODIS</button>
       </div>
+      <div class="seg colorby" role="radiogroup" aria-label="Tile color shows">
+        <button role="radio" aria-checked="true" data-color="amount">Amount</button>
+        <button role="radio" aria-checked="false" data-color="usual" title="Compared with the median of the same month in other years">vs. usual</button>
+      </div>
     </div>
     <p class="note" id="src-note"></p>
     <div class="cal-scroll"><div id="calendar" class="months" role="grid" aria-label="Active cell-days for the selected period. Use arrow keys to move between tiles." tabindex="-1"></div></div>

@@ -60,8 +60,41 @@
     return { bg: hex, ink: 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.28 ? "#13202E" : "#FFFFFF" };
   }
   function colorFor(v) { const br = curBreaks(); return rampColor(br.filter((t) => v >= t).length); }
+  // ---------- compared with usual ----------
+  const DIV = {
+    light: ["#2F6FA6", "#9CC3E0", "#E6E2DA", "#EE9446", "#A8301A"],
+    dark: ["#5B9BD5", "#2D5274", "#4A5260", "#D8703A", "#8E2A12"]
+  };
+  const RATIO_STEPS = [0.5, 0.8, 1.25, 2];
+  const RATIO_LABELS = ["under half of usual", "0.5–0.8× usual", "near usual (0.8–1.25×)", "1.25–2× usual", "over 2× usual"];
+  const _med = {};
+  const seriesOf = (r) => state.view === "default" ? r.display : state.view;
+  function usualFor(series, m) {
+    const key = series + ":" + m;
+    if (key in _med) return _med[key];
+    const vals = state.rows.filter((r) => split(r.start).m === m && r[series] != null).map((r) => r[series]).sort((p, q) => p - q);
+    if (!vals.length) return (_med[key] = null);
+    const n = vals.length, med = n % 2 ? vals[(n - 1) / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2;
+    const ys = state.rows.filter((r) => split(r.start).m === m && r[series] != null).map((r) => split(r.start).y);
+    return (_med[key] = { med, n, from: Math.min(...ys), to: Math.max(...ys) });
+  }
+  function ratioOf(r) {
+    const s = seriesOf(r), v = r[s];
+    if (v == null) return null;
+    const u = usualFor(s, split(r.start).m);
+    if (!u) return null;
+    return { ratio: v / Math.max(1, u.med), u, series: s };
+  }
+  function divColor(ratio) {
+    const hex = DIV[isDarkTheme() ? "dark" : "light"][RATIO_STEPS.filter((t) => ratio >= t).length];
+    const [r, g, b] = [1, 3, 5].map((j) => toLin(parseInt(hex.slice(j, j + 2), 16)));
+    return { bg: hex, ink: 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.28 ? "#13202E" : "#FFFFFF" };
+  }
+  const fmtRatio = (x) => (x >= 10 ? Math.round(x) : x.toFixed(1)) + "×";
+  const SERIES_NAME = { modis: "observed MODIS", snpp: "observed VIIRS", est: "harmonized MODIS" };
+  const usingUsual = () => state.color === "usual" && state.grain !== "week";
 
-  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", chart: "values", weeks: null, weekIdx: {}, selWeek: null };
+  const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", color: "amount", chart: "values", weeks: null, weekIdx: {}, selWeek: null };
   const $ = (id) => document.getElementById(id);
   const fmt = (v, d = 0) => v == null ? "Unavailable" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: d });
   const split = (k) => { const [y, m] = k.split("-").map(Number); return { y, m }; };
@@ -119,8 +152,10 @@
         const v = valueOf(r, state.view), sel = k === state.sel, era = k === TRANSITION ? " era-start" : "";
         const common = ' role="gridcell" data-k="' + k + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
         if (v == null) { h += '<button class="yc unavail' + era + '"' + common + ' title="' + label(k, true) + ': unavailable" aria-label="' + label(k, true) + ': unavailable"></button>'; continue; }
-        const col = colorFor(v), txt = fmt(v, viewDec(r, state.view));
-        h += '<button class="yc' + era + '"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" title="' + label(k, true) + ": " + txt + ' cell-days" aria-label="' + label(k, true) + ": " + txt + ' active cell-days"><span>' + compact(v) + "</span></button>";
+        const ro = usingUsual() ? ratioOf(r) : null;
+        const col = ro ? divColor(ro.ratio) : colorFor(v), txt = fmt(v, viewDec(r, state.view));
+        const extra = ro ? ", " + fmtRatio(ro.ratio) + " the usual " + MONTHS_LONG[m - 1] : "";
+        h += '<button class="yc' + era + '"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" title="' + label(k, true) + ": " + txt + " cell-days" + extra + '" aria-label="' + label(k, true) + ": " + txt + " active cell-days" + extra + '"><span>' + (ro ? fmtRatio(ro.ratio) : compact(v)) + "</span></button>";
       }
     }
     cal.innerHTML = h;
@@ -130,7 +165,13 @@
     $("src-note").textContent = VIEWS[state.view] + " Each row is a year; click a month to see its details.";
     drawLegend();
   }
+  function setColor(c) {
+    state.color = c;
+    document.querySelectorAll(".colorby button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.color === c)));
+    drawCalendar();
+  }
   function drawCalendar() {
+    document.querySelector(".colorby").hidden = state.grain === "week";
     if (state.grain === "all") return drawYearGrid();
     $("calendar").classList.remove("years"); $("calendar").style.gridTemplateRows = "";
     if (state.grain === "week") return drawWeekCalendar();
@@ -150,8 +191,11 @@
       if (v == null) {
         h += '<button class="tile unavail"' + common + ' aria-label="' + label(k, true) + ': unavailable"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">Unavailable</span>' + era + "</button>";
       } else {
-        const col = colorFor(v);
-        h += '<button class="tile"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" aria-label="' + label(k, true) + ": " + fmt(v, dec) + ' active cell-days"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">' + fmt(v, dec) + '</span><span class="tu">cell-days</span>' + era + "</button>";
+        const ro = usingUsual() ? ratioOf(r) : null;
+        const col = ro ? divColor(ro.ratio) : colorFor(v);
+        const sub = ro ? '<span class="tu ratio">' + fmtRatio(ro.ratio) + " usual</span>" : '<span class="tu">cell-days</span>';
+        const al = ro ? ", " + fmtRatio(ro.ratio) + " the usual " + MONTHS_LONG[m - 1] : "";
+        h += '<button class="tile"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" aria-label="' + label(k, true) + ": " + fmt(v, dec) + " active cell-days" + al + '"><span class="mn">' + MONTHS[m - 1] + '</span><span class="tv">' + fmt(v, dec) + "</span>" + sub + era + "</button>";
       }
     }
     cal.innerHTML = h;
@@ -169,6 +213,14 @@
     $("calendar").classList.toggle("small", hgt >= 11 && hgt < 16);
   }
   function drawLegend() {
+    $("legend").classList.toggle("usual", usingUsual());
+    if (usingUsual()) {
+      const yrs = state.view === "default" ? "MODIS months use 2003–2025, harmonized months 2012–2025" : (state.view === "modis" ? "2003–2025" : "2012–2025");
+      $("legend").innerHTML = '<span class="legend-head">Compared with the median of the same calendar month (' + yrs + ")</span>" +
+        '<div class="qkey">' + RATIO_LABELS.map((t, i) => '<span><i style="background:' + DIV[isDarkTheme() ? "dark" : "light"][i] + '"></i>' + t + "</span>").join("") + "</div>" +
+        '<span class="key"><i class="hatch"></i>Unavailable</span>';
+      return;
+    }
     const br = curBreaks(), f = (v) => fmt(v);
     const labels = ["under " + f(br[0]), f(br[0]) + "–" + f(br[1]), f(br[1]) + "–" + f(br[2]), f(br[2]) + "–" + f(br[3]), f(br[3]) + " or more"];
     const unit = state.grain === "week" ? "weeks" : "months";
@@ -199,6 +251,8 @@
       kv("Harmonized MODIS", r.est, 2, estHint) +
       "</div>" +
       '<div class="compare">' + bar("Observed MODIS", "modis", r.modis, 0) + bar("Observed VIIRS", "snpp", r.snpp, 0) + bar("Harmonized MODIS", "est", r.est, 2) + "</div>" +
+      (() => { if (wk) return ""; const ro = ratioOf(r); if (!ro) return ""; const word = ro.ratio >= 2 ? "far above" : ro.ratio >= 1.25 ? "above" : ro.ratio >= 0.8 ? "close to" : ro.ratio >= 0.5 ? "below" : "far below";
+        return '<p class="usual"><b>' + fmtRatio(ro.ratio) + " the usual " + MONTHS_LONG[m - 1] + "</b>, " + word + " normal. Usual = median " + SERIES_NAME[ro.series] + " for " + MONTHS_LONG[m - 1] + ", " + ro.u.from + "–" + ro.u.to + " (" + fmt(ro.u.med, 1) + " cell-days, " + ro.u.n + " years).</p>"; })() +
       '<p class="status"><span aria-hidden="true">⚠</span> Satellite coverage unverified' + (paired ? " · VIIRS hotspot type provisional" : "") + (r.versions ? " · MODIS v" + r.versions.replace("|", " and v") : "") + "</p>";
     const mapText = wk ? AREA + " · " + shortSpan(wk) + ", " + split(wk.end).y + ": " + fmt(weekValue(wk, state.view), state.view === "est" || state.view === "default" ? 2 : 0) : AREA + " · " + label(k) + ": " + fmt(valueOf(r, state.view), viewDec(r, state.view));
     lastMapText = mapText;
@@ -637,6 +691,7 @@
     });
     document.querySelectorAll(".seg button[data-src]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
     document.querySelectorAll(".chart-mode button").forEach((b) => b.addEventListener("click", () => setChartMode(b.dataset.chart)));
+    document.querySelectorAll(".colorby button").forEach((b) => b.addEventListener("click", () => setColor(b.dataset.color)));
     $("dl").addEventListener("toggle", () => { if ($("dl").open) syncDlLabels(); });
     document.querySelectorAll(".dl-menu button").forEach((b) => b.addEventListener("click", async () => { $("dl").open = false; try { await download(b.dataset.dl); } catch (e) { console.error(e); } }));
     document.addEventListener("click", (e) => { if ($("dl").open && !$("dl").contains(e.target)) $("dl").open = false; });
