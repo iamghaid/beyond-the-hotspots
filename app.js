@@ -253,7 +253,8 @@
       xt += '<text x="' + cx + '" y="' + (H - 6) + '" text-anchor="middle">' + lab + "</text>";
       bars += '<rect class="err-hit" data-i="' + i + '" x="' + (m.l + gw * i) + '" y="' + m.t + '" width="' + gw + '" height="' + ih + '" fill="transparent"/>';
     });
-    const sum = "Seasons outside fitting: raw MODIS " + E.rawP.toFixed(2) + "% → harmonized " + E.harmP.toFixed(2) + "% (" + E.months + " months, " + E.seasons + " seasons)";
+    const sum = W >= 640 ? "Seasons outside fitting: raw MODIS " + E.rawP.toFixed(2) + "% → harmonized " + E.harmP.toFixed(2) + "% (" + E.months + " months, " + E.seasons + " seasons)"
+      : W >= 420 ? "Outside fitting: raw " + E.rawP.toFixed(2) + "% → harmonized " + E.harmP.toFixed(2) + "%" : E.rawP.toFixed(1) + "% → " + E.harmP.toFixed(1) + "% outside fitting";
     box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Weighted absolute error against observed VIIRS by season. ' + sum + '. ' + L.map((s) => s.season + ": raw " + s.rawP.toFixed(1) + "%, harmonized " + s.harmP.toFixed(1) + "%" + (s.fit ? " (fitting season)" : "")).join("; ") + '">' +
       '<defs><pattern id="fit-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="' + c("--border") + '" stroke-width="2"/></pattern></defs>' +
       '<text class="err-sum" x="' + m.l + '" y="14">' + sum + "</text>" +
