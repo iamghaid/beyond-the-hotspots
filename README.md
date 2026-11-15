@@ -63,6 +63,8 @@ flowchart TB
 
 Why L1 and not ordinary least squares: absolute error is not dominated by a few extreme months such as September 2020, so one huge fire season cannot pull the coefficients toward itself. The model has four numbers in total, which keeps it easy to explain and hard to overfit.
 
+**Full specification:** [docs/ALGORITHM.md](docs/ALGORITHM.md) gives every formula, the filtering rules, a worked example for February 2012, and a refit on all 14 paired seasons.
+
 ## Result
 
 Across **120 months that the model never saw**, MODIS error against observed VIIRS fell from **44.48% to 9.94%**.
@@ -145,6 +147,7 @@ monthly.json                     276 months, Feb 2003 – Jan 2026: MODIS, VIIRS
 weekly.json                      Weekly values Feb 2012 – Jan 2026 (CSV download)
 kernel-logo.webp, favicon.svg    Assets
 docs/error-by-season.svg         Result figure used in this README
+docs/ALGORITHM.md                Full algorithm specification with formulas and a worked example
 analysis/
   harmonization_frp_ensemble.ipynb   Full pipeline from FIRMS archives
   check_results.py                   Reproduces the results and robustness tables
