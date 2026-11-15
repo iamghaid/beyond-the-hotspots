@@ -52,7 +52,7 @@ flowchart TB
   B2 --> E
 
   E --> T["Test on 10 other seasons, 120 months<br>error vs VIIRS: 44.48% → 9.94%"]
-  E --> C["VIIRS-equivalent calendar<br>2003–2026"]
+  E --> C["Monthly calendar 2003–2026<br>VIIRS scale from Feb 2012"]
 ```
 
 | Step | Algorithm | Output |
@@ -173,7 +173,9 @@ pip install numpy scipy
 python check_results.py
 ```
 
-The full pipeline from raw FIRMS archives is `analysis/harmonization_frp_ensemble.ipynb`. It needs the FIRMS archive downloads for the study box, which are not stored in this repository.
+The full pipeline from raw FIRMS archives is `analysis/harmonization_frp_ensemble.ipynb` ([open in Colab](https://colab.research.google.com/github/iamghaid/beyond-the-hotspots/blob/main/analysis/harmonization_frp_ensemble.ipynb) · [read with outputs](https://nbviewer.org/github/iamghaid/beyond-the-hotspots/blob/main/analysis/harmonization_frp_ensemble.ipynb)). The 2003–2012 MODIS years come from `analysis/modis_backfill_2003_2012.ipynb`, which uses the same filters, local dates and 2 km grid. Both need the FIRMS archive downloads for the study box, which are not stored in this repository.
+
+**The final record in one file:** [`analysis/pantanal_monthly_2003_2026.csv`](analysis/pantanal_monthly_2003_2026.csv) lists all 276 months with observed MODIS, observed VIIRS, the FRP ensemble (from February 2012), the 1.84× scalar for every month, and the value the dashboard shows. Before February 2012 no FRP bands are available in the export, so the 1.84× column is the VIIRS-scale estimate for those years.
 
 ## Repository
 
@@ -185,8 +187,12 @@ kernel-logo.webp, favicon.svg    Assets
 docs/error-by-season.svg         Result figure used in this README
 docs/paper-fig*.webp             Figures from our research report (Fig. 2–6)
 docs/ALGORITHM.md                Full algorithm specification with formulas and a worked example
+LICENSE                          MIT licence for the code
 analysis/
-  harmonization_frp_ensemble.ipynb   Full pipeline from FIRMS archives
+  pantanal_monthly_2003_2026.csv     Final record: all 276 months, every series in one table
+  harmonization_frp_ensemble.ipynb   Full pipeline from FIRMS archives, 2012–2026
+  modis_backfill_2003_2012.ipynb     MODIS cleaning and counts, 2003–2012
+  modis_backfill_monthly.csv         Monthly MODIS cell-days, Feb 2003 – Jan 2012
   check_results.py                   Reproduces the results and robustness tables
   monthly_overlap.csv                168 overlap months with MODIS FRP bands
   weekly_overlap.csv                 Weekly MODIS and VIIRS, used to fit the 1.84 factor
@@ -205,8 +211,12 @@ python3 -m http.server 8000
 ## Data and credits
 
 - Fire detections: [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/download/) archive, MODIS Collection 6/6.1 (Terra, Aqua) and VIIRS S-NPP 375 m.
-- Weather test: [NASA POWER](https://power.larc.nasa.gov/) monthly cloud amount and aerosol optical depth (CERES SYN1deg).
+- Weather test: [NASA POWER](https://power.larc.nasa.gov/) monthly cloud amount and aerosol optical depth (CERES SYN1deg). This was a separate experiment; its result is reported above and in our research report, and its code is not part of this repository.
 - 3D map: Esri World Imagery, Mapzen/AWS terrain tiles, OpenStreetMap Nominatim search, MapLibre GL JS.
+
+## Licence
+
+Code: [MIT](LICENSE). NASA FIRMS and NASA POWER data follow [NASA's open data policy](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance). Map tiles and fonts keep their own providers' terms.
 
 ## Team The Kernel
 
