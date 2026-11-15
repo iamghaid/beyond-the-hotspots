@@ -1,10 +1,22 @@
-# Beyond the Hotspots
+<p align="center">
+  <img src="kernel-logo.webp" alt="The Kernel" width="300">
+</p>
 
-**One burning-activity record for Brazil's Pantanal, built from two generations of NASA fire satellites.**
+<h1 align="center">Beyond the Hotspots</h1>
 
-NASA Space Apps Challenge 2026 · [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/) · Team **The Kernel**
+<p align="center"><strong>One burning-activity record for Brazil's Pantanal, built from two generations of NASA fire satellites.</strong></p>
 
-**[Open the dashboard](https://beyond-the-hotspots.vercel.app)** · **[Open the 3D fire map](https://beyond-the-hotspots-globe.vercel.app)** · [3D map source](https://github.com/iamghaid/beyond-the-hotspots-globe)
+<p align="center">
+  <a href="https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/"><img alt="NASA Space Apps Challenge 2026" src="https://img.shields.io/badge/NASA%20Space%20Apps-2026-0B3D91?style=for-the-badge"></a>
+  <a href="https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/"><img alt="Challenge: Harmonization of MODIS and VIIRS Hot Spots" src="https://img.shields.io/badge/Challenge-MODIS%20%26%20VIIRS%20Hot%20Spots-E8722A?style=for-the-badge"></a>
+  <img alt="Team The Kernel" src="https://img.shields.io/badge/Team-The%20Kernel-555555?style=for-the-badge">
+</p>
+
+<p align="center">
+  <a href="https://beyond-the-hotspots.vercel.app"><strong>Open the dashboard</strong></a> ·
+  <a href="https://beyond-the-hotspots-globe.vercel.app"><strong>Open the 3D fire map</strong></a> ·
+  <a href="https://github.com/iamghaid/beyond-the-hotspots-globe">3D map source</a>
+</p>
 
 ---
 
