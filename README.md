@@ -74,20 +74,41 @@ Across **120 months that the model never saw**, MODIS error against observed VII
 | Test (weighted absolute error vs observed VIIRS) | Raw MODIS | Single factor ×1.84 | **FRP ensemble (ours)** |
 |---|---:|---:|---:|
 | Outside fitting: 10 seasons, 120 months | 44.48% | 11.51% | **9.94%** |
+| Outside fitting: 512 complete weeks | 45.03% | 16.04% | **14.81%** |
 | Later seasons 2018–2025: 96 months | 44.18% | 12.75% | **10.79%** |
 | All 168 months, fitting included | 44.85% | 11.41% | **9.88%** |
+
+Calibrated bias outside fitting is −1.42% for the ensemble, so it neither systematically over- nor under-estimates VIIRS.
+
+<p align="center">
+  <img src="docs/paper-fig3-held-out-scatter.webp" alt="Scatter of 120 held-out months: unadjusted MODIS falls far below the one-to-one line, scaled MODIS sits on it" width="520">
+</p>
+<p align="center"><sub><b>From our research report, Fig. 3.</b> The same 120 held-out months before (a) and after (b) scaling. Dashed line = perfect agreement with VIIRS. Panel b shows the single-factor component; the final ensemble is closer still.</sub></p>
 
 Stricter checks, where the whole method is refitted every time:
 
 | Robustness check | FRP ensemble |
 |---|---:|
-| Leave one season out (14 folds) | 10.93% |
+| Leave one season out (14 folds), monthly | 10.93% |
+| Leave one season out (14 folds), complete weeks | 15.46% |
 | Train on past seasons only, predict the next one | 11.69% |
 | Time-reversed: train on later seasons, predict earlier ones | 7.5% – 8.3% |
 
 Under every test the error stays near 8–12%, against about 44% without harmonization. The time-reversed check matters for going back before 2012, where only MODIS exists.
 
+<p align="center">
+  <img src="docs/paper-fig2-time-series.webp" alt="Monthly time series: observed MODIS 2003–2026 on top; observed VIIRS, observed MODIS and scaled MODIS 2012–2026 below, with fitting seasons shaded" width="720">
+</p>
+<p align="center"><sub><b>From our research report, Fig. 2.</b> (a) Observed MODIS for all 276 months, 2003–2026. (b) The 168 paired months: scaled MODIS (dashed) tracks observed VIIRS through the 2020 megafire and the 2023–2024 peaks. Shaded = fitting seasons.</sub></p>
+
 We also tested other model variants and **NASA POWER** monthly cloud and aerosol data. None passed our pre-set replacement rule (better in every held-out group and in at least 6 of 10 seasons), so the FRP ensemble stays. Monthly regional averages can't capture the clouds or smoke present at each satellite overpass.
+
+## The full record, 2003–2026
+
+<p align="center">
+  <img src="docs/paper-fig4-calendar-2003-2026.webp" alt="Heat-map calendar of observed MODIS cell-days for every month from February 2003 to January 2026; September 2020 is the darkest cell at 4,058" width="620">
+</p>
+<p align="center"><sub><b>From our research report, Fig. 4.</b> Observed MODIS cell-days for all 23 fire seasons, one definition throughout. The line marks February 2012, when VIIRS observations begin. The busiest month is September 2020 (4,058 MODIS cell-days, 7,108 VIIRS).</sub></p>
 
 ## What you can do on the dashboard
 
@@ -111,13 +132,18 @@ flowchart LR
   F --> G[Dashboard and<br>3D fire map]
 ```
 
-1. **Activity unit.** An *active cell-day* is a 2 × 2 km grid cell with at least one qualifying detection on one local day. MODIS is the union of Terra and Aqua, so a cell seen by both counts once. This removes the effect of multiple pixels and overpasses from the same fire.
-2. **Why fire intensity.** VIIRS adds small, low-intensity fires. Intense fires are seen by both sensors. A single multiplier therefore over-corrects the biggest fire months. We split MODIS cell-days into three fire radiative power (FRP) bands, using the maximum FRP per cell-day: under 10 MW, 10–50 MW and 50 MW or more.
-3. **Model.**
+1. **Filtering.** Validate the FIRMS schema, remove exact duplicate rows, convert UTC acquisition time (padded to four digits) to the local `America/Cuiaba` date, keep detections inside the box (boundary included) with hotspot type 0, MODIS confidence ≥ 30 and VIIRS confidence nominal or high.
+2. **Activity unit.** An *active cell-day* is a 2 × 2 km grid cell with at least one qualifying detection on one local day. MODIS is the union of Terra and Aqua, so a cell seen by both counts once. This removes the effect of multiple pixels and overpasses from the same fire.
+3. **Why fire intensity.** VIIRS adds small, low-intensity fires. Intense fires are seen by both sensors. A single multiplier therefore over-corrects the biggest fire months. We split MODIS cell-days into three fire radiative power (FRP) bands, using the maximum FRP per cell-day: under 10 MW, 10–50 MW and 50 MW or more.
+4. **Model.**
    `harmonized = 0.5 × (1.84 × MODIS) + 0.5 × (1.142 × low + 2.425 × medium + 0.952 × high)`
    The 1.84 multiplier minimizes weekly absolute error over 206 complete weeks; its solution is the MODIS-weighted median of weekly VIIRS/MODIS ratios. The three FRP coefficients minimize monthly absolute error over 48 months (L1 regression solved by linear programming, bounded 0–6). Both are fitted only on February 2013 – January 2017.
-4. **Evaluation.** Weighted absolute error = Σ |estimate − VIIRS| ÷ Σ VIIRS, so busy months count more than near-empty ones. Seasons run February to January.
-5. **Unusual months.** "Usual" is the median of the same calendar month within the same series: observed MODIS for 2003–2025, harmonized MODIS for 2012–2025.
+5. **Worked example, February 2012** (outside fitting). MODIS saw 57 cell-days: 8 low, 39 medium, 10 high FRP.
+   `1.84 × 57 = 104.88` · `1.142 × 8 + 2.425 × 39 + 0.952 × 10 = 113.22` · average **109.05**. VIIRS actually counted **104**.
+6. **Evaluation.** Weighted absolute error = Σ |estimate − VIIRS| ÷ Σ VIIRS, so busy months count more than near-empty ones. Seasons run February to January.
+7. **Unusual months.** "Usual" is the median of the same calendar month within the same series: observed MODIS for 2003–2025, harmonized MODIS for 2012–2025.
+
+A second release refits the same model on all 14 paired seasons (k = 1.759; FRP weights 1.100 · 2.364 · 1.190) and gives harmonized estimates for 106 of the 108 months before 2012. The dashboard uses the 2013–2016 release above, because only that one has untouched test seasons. Details in [docs/ALGORITHM.md](docs/ALGORITHM.md).
 
 ## Limitations
 
@@ -125,7 +151,7 @@ flowchart LR
 - The test periods were inspected while the method was developed. The results are retrospective, not a fresh independent validation. The robustness checks above are our answer to that.
 - Harmonization corrects **totals**. It cannot recover the location of a small fire MODIS never detected.
 - Results are validated for the full study box. Smaller subareas are not validated.
-- Satellite observation coverage (clouds, outages) is unverified. VIIRS hotspot type is provisional. Before February 2012 the calendar shows observed MODIS.
+- Satellite observation coverage (clouds, outages) is unverified. VIIRS hotspot type is provisional. Before February 2012 the calendar shows observed MODIS. Weeks with zero MODIS cell-days get a blank estimate, and quiet weeks are where the method is weakest.
 
 ## Reproduce the numbers
 
@@ -147,6 +173,7 @@ monthly.json                     276 months, Feb 2003 – Jan 2026: MODIS, VIIRS
 weekly.json                      Weekly values Feb 2012 – Jan 2026 (CSV download)
 kernel-logo.webp, favicon.svg    Assets
 docs/error-by-season.svg         Result figure used in this README
+docs/paper-fig*.webp             Figures from our research report
 docs/ALGORITHM.md                Full algorithm specification with formulas and a worked example
 analysis/
   harmonization_frp_ensemble.ipynb   Full pipeline from FIRMS archives
