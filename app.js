@@ -39,15 +39,27 @@
     return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
   }
   const isDarkTheme = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-  function colorFor(v) {
-    const stops = RAMPS[isDarkTheme() ? "dark" : "light"].map(hexToLab);
-    const t = Math.min(1, Math.log10(1 + Math.max(0, v)) / Math.log10(1 + SCALE_MAX)) * (stops.length - 1);
-    const i = Math.min(stops.length - 2, Math.floor(t)), f = t - i;
-    const lab = stops[i].map((c, j) => c + (stops[i + 1][j] - c) * f);
-    const rgb = labToRgb(lab);
-    const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-    return { bg: "rgb(" + rgb.map(toSrgb).join(",") + ")", ink: lum > 0.28 ? "#13202E" : "#FFFFFF" };
+  const _brk = {};
+  const niceRound = (v) => v < 10 ? Math.round(v) : v < 100 ? Math.round(v / 5) * 5 : v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 100) * 100;
+  function breaksFor(grain, view) {
+    const key = grain + ":" + view;
+    if (_brk[key]) return _brk[key];
+    const src = grain === "week" ? (state.weeks || []).map((w) => weekValue(w, view)) : state.rows.map((r) => valueOf(r, view));
+    const vals = src.filter((v) => v != null).sort((p, q) => p - q);
+    if (!vals.length) return [1, 10, 100, 1000];
+    const q = (p) => vals[Math.min(vals.length - 1, Math.floor(p * (vals.length - 1)))];
+    const br = [0.2, 0.4, 0.6, 0.8].map((p) => Math.max(1, niceRound(q(p))));
+    for (let i = 1; i < br.length; i++) if (br[i] <= br[i - 1]) br[i] = br[i - 1] + 1;
+    if (grain === "week" && !state.weeks) return br;
+    return (_brk[key] = br);
   }
+  const curBreaks = () => breaksFor(state.grain === "week" ? "week" : "month", state.view);
+  function rampColor(i) {
+    const hex = RAMPS[isDarkTheme() ? "dark" : "light"][i];
+    const [r, g, b] = [1, 3, 5].map((j) => toLin(parseInt(hex.slice(j, j + 2), 16)));
+    return { bg: hex, ink: 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.28 ? "#13202E" : "#FFFFFF" };
+  }
+  function colorFor(v) { const br = curBreaks(); return rampColor(br.filter((t) => v >= t).length); }
 
   const state = { view: "default", sel: "2023-11", from: 2003, to: 2025, rows: [], byKey: {}, meta: {}, grain: "month", chart: "values", weeks: null, weekIdx: {}, selWeek: null };
   const $ = (id) => document.getElementById(id);
@@ -91,7 +103,36 @@
     $("src-note").textContent = WEEK_VIEWS[state.view];
     drawLegend();
   }
+  function drawYearGrid() {
+    const cal = $("calendar");
+    cal.classList.remove("weeks"); cal.classList.add("years");
+    const years = [...new Set(state.rows.map((r) => split(r.start).y))];
+    const fit = document.documentElement.classList.contains("fit");
+    cal.style.gridTemplateRows = "auto repeat(" + years.length + ", " + (fit ? "minmax(0, 1fr)" : "22px") + ")";
+    let h = '<div class="yg-h" aria-hidden="true"></div>' + MONTHS.map((m) => '<div class="yg-h" aria-hidden="true">' + m.slice(0, 1) + "</div>").join("");
+    for (const y of years) {
+      h += '<div class="yg-y' + (y === 2012 ? " era" : "") + '" role="rowheader">' + y + "</div>";
+      for (let m = 1; m <= 12; m++) {
+        const k = y + "-" + String(m).padStart(2, "0");
+        const r = state.byKey[k];
+        if (!r) { h += '<div class="yc na" aria-hidden="true"></div>'; continue; }
+        const v = valueOf(r, state.view), sel = k === state.sel, era = k === TRANSITION ? " era-start" : "";
+        const common = ' role="gridcell" data-k="' + k + '" tabindex="' + (sel ? 0 : -1) + '" aria-selected="' + sel + '"';
+        if (v == null) { h += '<button class="yc unavail' + era + '"' + common + ' title="' + label(k, true) + ': unavailable" aria-label="' + label(k, true) + ': unavailable"></button>'; continue; }
+        const col = colorFor(v), txt = fmt(v, viewDec(r, state.view));
+        h += '<button class="yc' + era + '"' + common + ' style="background:' + col.bg + ";color:" + col.ink + '" title="' + label(k, true) + ": " + txt + ' cell-days" aria-label="' + label(k, true) + ": " + txt + ' active cell-days"><span>' + compact(v) + "</span></button>";
+      }
+    }
+    cal.innerHTML = h;
+    cal.classList.toggle("narrow", cal.clientWidth < 380);
+    const { y, m } = split(state.sel);
+    $("year").value = y; $("month").value = m;
+    $("src-note").textContent = VIEWS[state.view] + " Each row is a year; click a month to see its details.";
+    drawLegend();
+  }
   function drawCalendar() {
+    if (state.grain === "all") return drawYearGrid();
+    $("calendar").classList.remove("years"); $("calendar").style.gridTemplateRows = "";
     if (state.grain === "week") return drawWeekCalendar();
     const cal = $("calendar");
     cal.classList.remove("weeks");
@@ -128,12 +169,12 @@
     $("calendar").classList.toggle("small", hgt >= 11 && hgt < 16);
   }
   function drawLegend() {
-    const ticks = [0, 10, 100, 1000, SCALE_MAX];
-    const pos = (v) => (100 * Math.log10(1 + v) / Math.log10(1 + SCALE_MAX)).toFixed(1) + "%";
-    const grad = Array.from({ length: 11 }, (_, i) => colorFor(Math.pow(1 + SCALE_MAX, i / 10) - 1).bg).join(",");
-    const head = state.grain === "week" ? "Weekly active cell-days" : state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: harmonized MODIS" : "Active cell-days";
-    $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="ramp" style="background:linear-gradient(90deg,' + grad + ')"></div><div class="ticks">' +
-      ticks.map((t) => '<span style="left:' + pos(t) + '">' + fmt(t) + "</span>").join("") + '</div><span class="key"><i class="hatch"></i>Unavailable</span>' + (state.grain === "week" ? '<span class="key"><b class="chip-key">5 days</b>partial week at the season start</span>' : '<span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>');
+    const br = curBreaks(), f = (v) => fmt(v);
+    const labels = ["under " + f(br[0]), f(br[0]) + "–" + f(br[1]), f(br[1]) + "–" + f(br[2]), f(br[2]) + "–" + f(br[3]), f(br[3]) + " or more"];
+    const unit = state.grain === "week" ? "weeks" : "months";
+    const head = (state.grain === "week" ? "Weekly active cell-days" : state.view === "default" ? "Before Feb 2012: observed MODIS · from Feb 2012: harmonized MODIS" : "Active cell-days") + " · each color holds a fifth of all " + unit;
+    $("legend").innerHTML = '<span class="legend-head">' + head + '</span><div class="qkey">' + labels.map((t, i) => '<span><i style="background:' + rampColor(i).bg + '"></i>' + t + "</span>").join("") + "</div>" +
+      '<span class="key"><i class="hatch"></i>Unavailable</span>' + (state.grain === "week" ? '<span class="key"><b class="chip-key">5 days</b>partial week at the season start</span>' : state.grain === "all" ? '<span class="key"><i class="era-key"></i>first VIIRS month, Feb 2012</span>' : '<span class="key"><b class="chip-key">VIIRS</b>first VIIRS month, Feb 2012</span>');
   }
 
   // ---------- month detail ----------
@@ -525,7 +566,7 @@
     state.sel = k;
     if (state.grain === "week") pickWeek();
     drawCalendar(); drawDetail(); drawChart();
-    if (focus) document.querySelector('.tile[data-k="' + k + '"]')?.focus();
+    if (focus) document.querySelector('.tile[data-k="' + k + '"], .yc[data-k="' + k + '"]')?.focus();
   }
   function setView(v) {
     state.view = v;
@@ -576,7 +617,7 @@
     const cal = $("calendar");
     cal.addEventListener("click", (e) => {
       const go = e.target.closest("button[data-go]"); if (go) return select(go.dataset.go);
-      const b = e.target.closest("button.tile"); if (!b) return;
+      const b = e.target.closest("button.tile, button.yc"); if (!b) return;
       if (b.dataset.w) selectWeek(b.dataset.w, true); else select(b.dataset.k, true);
     });
     cal.addEventListener("keydown", (e) => {
@@ -589,8 +630,9 @@
         const j = Math.max(0, Math.min(n - 1, state.weekIdx[state.selWeek] + step));
         return selectWeek(state.weeks[j].start, true);
       }
-      let k = shift(state.sel, moves[e.key]);
-      if (!state.byKey[k]) k = moves[e.key] < 0 ? first : last;
+      const mv = state.grain === "all" && Math.abs(moves[e.key]) === 4 ? moves[e.key] * 3 : moves[e.key];
+      let k = shift(state.sel, mv);
+      if (!state.byKey[k]) k = mv < 0 ? first : last;
       select(k, true);
     });
     document.querySelectorAll(".seg button[data-src]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.src)));
